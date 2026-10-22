@@ -1,0 +1,24 @@
+# Free "alarm clock" for the API: every 10 minutes it wakes the server (Render's free plan sleeps after
+# 15 idle minutes) and runs the scheduled jobs (deadline reminders, escalations, demo clean-up).
+# Needs two repository settings (GitHub → Settings → Secrets and variables → Actions):
+#   Variable  API_URL      e.g. https://traceerase-api.onrender.com
+#   Secret    CRON_SECRET  the CRON_SECRET value from Render → Environment
+name: Keep API awake
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake and run scheduled jobs
+        env:
+          API_URL: ${{ vars.API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$API_URL" ]; then echo "Set the API_URL variable first"; exit 0; fi
+          curl -fsS --retry 6 --retry-delay 20 --retry-all-errors --max-time 90 "$API_URL/api/health"
+          echo
+          if [ -n "$CRON_SECRET" ]; then curl -fsS --max-time 120 -X POST -H "X-Cron-Secret: $CRON_SECRET" "$API_URL/api/cron/tick"; fi

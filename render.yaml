@@ -1,0 +1,41 @@
+# Render Blueprint: the TraceErase API on Render's free plan.
+# Render → New → Blueprint → pick this GitHub repo. It asks for the values marked "sync: false".
+services:
+  - type: web
+    name: traceerase-api
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: server
+    buildCommand: npm install --omit=dev --no-audit --no-fund
+    startCommand: node src/index.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Secrets: paste these in Render when it asks (never put them in GitHub)
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      # Made by Render automatically
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: INBOUND_SECRET
+        generateValue: true
+      # Settings
+      - key: FIREBASE_PROJECT_ID
+        value: trace-erase
+      - key: APP_URL
+        value: https://trace-erase.web.app,https://trace-erase.firebaseapp.com
+      - key: WEBAUTHN_RP_ID
+        value: trace-erase.web.app
+      - key: WEBAUTHN_ORIGIN
+        value: https://trace-erase.web.app
+      - key: DEMO_MODE
+        value: "true"
+      - key: SEND_REAL_REQUESTS
+        value: "false"

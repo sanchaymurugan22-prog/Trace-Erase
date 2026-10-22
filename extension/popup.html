@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TraceErase</title>
+<style>
+:root{--ink:#0A1630;--mute:#56627A;--line:#E2E7F0;--blue:#2350D8;--teal:#0B7A6E}
+*{box-sizing:border-box}
+body{margin:0;width:360px;font:14px/1.45 Inter,system-ui,-apple-system,sans-serif;color:var(--ink);background:#F3F5FA}
+.top{background:#0A1630;color:#fff;padding:14px 16px;display:flex;flex-direction:column;gap:12px;background-image:radial-gradient(rgba(255,255,255,.075) 1px,transparent 1.2px);background-size:22px 22px}
+.row{display:flex;align-items:center;gap:10px}
+.w{font:800 17px Manrope,Inter,sans-serif;letter-spacing:-.02em}.w span{color:#2DD4BF}
+.co{width:34px;height:34px;border-radius:10px;background:#334155;color:#fff;display:flex;align-items:center;justify-content:center;font:800 14px Manrope,sans-serif}
+.cap{font-size:12px;color:#A9B7CF}
+main{padding:14px;display:flex;flex-direction:column;gap:10px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.lbl{font-size:12px;color:var(--mute);font-weight:600}
+.mono{font:600 13.5px ui-monospace,'JetBrains Mono',monospace;word-break:break-all}
+button,a.btn{height:38px;border-radius:10px;border:1px solid transparent;font:600 13.5px Inter,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+.p{background:var(--blue);color:#fff}.s{background:#fff;color:var(--ink);border-color:#C9D2E1}.g{background:transparent;color:var(--blue)}
+.ai{background:#DDF5F1;border:1px solid #BDE8E0;border-radius:14px;padding:10px 12px;font-size:13px}
+.ai b{color:var(--teal);font-size:12px;display:block;margin-bottom:2px}
+input{height:38px;border:1.5px solid #C9D2E1;border-radius:10px;padding:0 10px;font:13px ui-monospace,monospace;width:100%}
+.err{color:#B42318;font-size:13px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="row" style="justify-content:space-between"><span class="w">Trace<span>Erase</span></span><a id="open" class="cap" href="http://localhost:5173/app" target="_blank" style="color:#A9B7CF">Open dashboard ↗</a></div>
+  <div class="row"><span class="co" id="mono">?</span><span><b id="site">This site</b><div class="cap" id="sub">Checking…</div></span></div>
+</div>
+<main>
+  <section id="connect" class="card hidden">
+    <span class="lbl">Connect to your TraceErase account</span>
+    <span style="font-size:13px">In TraceErase, open Settings → Browser extension → Create connection code, and paste it here.</span>
+    <input id="token" placeholder="Paste connection code">
+    <button class="p" id="save">Connect</button>
+    <span class="err" id="cerr"></span>
+  </section>
+  <section id="ready" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+    <div class="card">
+      <span class="lbl" id="elabel">Use this email for this site</span>
+      <span class="mono" id="email">—</span>
+      <button class="p" id="fillEmail">Fill email</button>
+      <button class="s hidden" id="create">Create a protected email for this site</button>
+    </div>
+    <div class="card">
+      <span class="lbl">Your protected number</span>
+      <span class="mono" id="phone">—</span>
+      <button class="s" id="fillPhone">Fill phone</button>
+    </div>
+    <div class="ai hidden" id="aibox"><b>AI · before you sign up</b><span id="ai"></span></div>
+    <button class="g" id="logout">Disconnect</button>
+  </section>
+  <span class="err" id="err"></span>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>
