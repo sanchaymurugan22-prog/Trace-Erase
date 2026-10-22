@@ -31,3 +31,6 @@ export const firebaseEnabled = !!FIREBASE.apiKey;
 
 /** Google OAuth web client ID (for "Continue with Google" and the Gmail scan). */
 export const GOOGLE_CLIENT_ID: string = String(env.VITE_GOOGLE_CLIENT_ID || '');
+
+/** Scan Gmail directly with Google's permission (needs Google's app verification for the public). */
+export const GMAIL_SCAN: boolean = !online || ONLINE.gmailScan;

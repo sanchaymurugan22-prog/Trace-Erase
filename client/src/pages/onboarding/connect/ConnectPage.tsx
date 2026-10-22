@@ -12,6 +12,7 @@ import { ExtensionHelpDialog } from './ExtensionHelpDialog';
 import { UploadMailList } from './UploadMailList';
 import type { MailRow } from './parseUpload';
 import { gmailAccessToken, googleEnabled, preloadGoogle } from '@/lib/firebaseAuth';
+import { GMAIL_SCAN } from '@/lib/config';
 
 type Source = 'gmail' | 'sample' | 'upload';
 
@@ -40,7 +41,9 @@ export default function ConnectPage() {
   const toast = useToast();
   const isDemo = !!user?.demo;
   // Online: Gmail is read with a one-time Google permission in the browser (nothing is stored)
-  const browserGmail = googleEnabled() && !isDemo;
+  const browserGmail = GMAIL_SCAN && googleEnabled() && !isDemo;
+  // Online without direct Gmail access: people upload a mail export instead
+  const showGmail = GMAIL_SCAN || !!user?.gmailConnected;
   const gmailReady = !isDemo && (browserGmail || !!user?.gmailConnected);
   const [source, setSource] = useState<Source>(isDemo ? 'sample' : gmailReady ? 'gmail' : 'upload');
   useEffect(() => { if (browserGmail) preloadGoogle(); }, [browserGmail]);
@@ -76,7 +79,7 @@ export default function ConnectPage() {
 
         <div className="grid grid-cols-2 gap-5 max-[900px]:grid-cols-1">
           {/* Gmail */}
-          <Option selected={source === 'gmail'} onSelect={gmailReady ? () => setSource('gmail') : undefined} disabled={isDemo}>
+          {showGmail && <Option selected={source === 'gmail'} onSelect={gmailReady ? () => setSource('gmail') : undefined} disabled={isDemo}>
             <GmailLogo />
             <div className="flex min-w-0 flex-1 flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
@@ -98,7 +101,7 @@ export default function ConnectPage() {
                       <span className="text-xs text-mute">{t('About 5 minutes, once')}</span>
                     </div>}
             </div>
-          </Option>
+          </Option>}
 
           {/* Sample inbox (demo accounts only: it is pretend data) */}
           {isDemo && <Option selected={source === 'sample'} onSelect={() => setSource('sample')}>

@@ -21,11 +21,22 @@ const MESSAGES: Record<string, string> = {
   USER_NOT_FOUND: 'Your sign-in expired. Please log in again.'
 };
 
+// On Firebase Hosting the exact web config is served at /__/firebase/init.json; prefer it over the typed copy
+let keyPromise: Promise<string> | null = null;
+function apiKey(): Promise<string> {
+  keyPromise ||= fetch('/__/firebase/init.json')
+    .then(r => (r.ok ? r.json() : null))
+    .then(j => (j && typeof j.apiKey === 'string' && j.apiKey) || FIREBASE.apiKey)
+    .catch(() => FIREBASE.apiKey);
+  return keyPromise;
+}
+
 async function call(base: string, op: string, body: Record<string, unknown>, form = false) {
   if (!FIREBASE.apiKey) throw new Error('Sign-in is not set up on this website yet.');
+  const key = await apiKey();
   let r: Response;
   try {
-    r = await fetch(`${base}/${op}?key=${encodeURIComponent(FIREBASE.apiKey)}`, {
+    r = await fetch(`${base}/${op}?key=${encodeURIComponent(key)}`, {
       method: 'POST',
       headers: { 'Content-Type': form ? 'application/x-www-form-urlencoded' : 'application/json' },
       body: form ? new URLSearchParams(body as Record<string, string>).toString() : JSON.stringify(body)
