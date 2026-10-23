@@ -347,7 +347,8 @@ export function registerRoutes(app) {
   // ---------- AI ----------
   app.get('/api/ai/status', () => aiStatus());
   // Re-read server/.env and try Gemini again (after the key was fixed)
-  app.post('/api/ai/retry', async () => {
+  app.post('/api/ai/retry', async (req) => {
+    U(req);
     reloadConfig(); resetAi();
     const t0 = Date.now();
     try { const text = await generate({ feature: 'ai-test', prompt: 'Reply with exactly: TraceErase AI is working', temperature: 0, models: mainModelCandidates() }); return { ok: true, text, ms: Date.now() - t0, ...aiStatus() }; }
@@ -384,7 +385,8 @@ export function registerRoutes(app) {
     if (st.model) updateEnvFile(ENV_FILE, { GEMINI_PROVIDER: st.provider, GEMINI_MODEL: st.model });
     return st;
   });
-  app.post('/api/ai/test', async () => {
+  app.post('/api/ai/test', async (req) => {
+    U(req);
     const t0 = Date.now();
     try {
       const text = await generate({ feature: 'ai-test', prompt: 'Reply with exactly: TraceErase AI is working', temperature: 0 });

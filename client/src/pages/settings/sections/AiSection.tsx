@@ -8,6 +8,7 @@ import { agoParts } from '@/lib/format';
 import { ActionButton, Banner, Button, Chip, Field, Icon, Input, KeyValue, Well, useToast } from '@/components/ui';
 import type { SetupStatus } from '@/types/api';
 import { SettingsCard } from './SettingsCard';
+import { API_URL } from '@/lib/config';
 
 export function AiSection() {
   const t = useT();
@@ -42,7 +43,7 @@ export function AiSection() {
           : <Chip tone="pend" icon="clock">{t('Checking…')}</Chip>}
         <span className="flex-1" />
         <ActionButton variant="secondary" size="sm" onClick={test}><Icon name="refresh" size="sm" />{t('Test again')}</ActionButton>
-        <Button variant="ghost" size="sm" onClick={() => setEditing(e => !e)}><Icon name="key" size="sm" />{t(st.configured ? 'Change key' : 'Add key')}</Button>
+        {!API_URL && <Button variant="ghost" size="sm" onClick={() => setEditing(e => !e)}><Icon name="key" size="sm" />{t(st.configured ? 'Change key' : 'Add key')}</Button>}
       </div>
 
       <Well className="gap-0 py-1">

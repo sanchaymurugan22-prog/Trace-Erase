@@ -10,9 +10,9 @@ import { AutomationSection } from './sections/AutomationSection';
 import { AiSection } from './sections/AiSection';
 import { GmailSection } from './sections/GmailSection';
 import { DisplaySection } from './sections/DisplaySection';
-import { ExtensionSection } from './sections/ExtensionSection';
 import { SecuritySection } from './sections/SecuritySection';
 import { DataSection } from './sections/DataSection';
+import { API_URL } from '@/lib/config';
 
 const SECTIONS: [string, IconName, string][] = [
   ['profile', 'user', 'Profile'],
@@ -21,10 +21,11 @@ const SECTIONS: [string, IconName, string][] = [
   ['ai', 'sparkle', 'AI (Gemini)'],
   ['gmail', 'mail', 'Gmail scanning'],
   ['display', 'globe', 'Language and display'],
-  ['extension', 'ext', 'Browser extension'],
   ['security', 'key', 'Security'],
   ['data', 'trash', 'Your TraceErase data']
 ];
+
+const online = !!API_URL;
 
 export default function SettingsPage() {
   const t = useT();
@@ -38,7 +39,7 @@ export default function SettingsPage() {
       <h1 className="text-4xl font-extrabold tracking-tight">{t('Settings')}</h1>
       <div className="grid items-start gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
         <nav className="flex flex-col gap-0.5 lg:sticky lg:top-6" aria-label={t('Settings sections')}>
-          {SECTIONS.map(([id, icon, label]) => (
+          {SECTIONS.filter(([id]) => !(online && id === 'gmail')).map(([id, icon, label]) => (
             <a key={id} href={`#${id}`} className="flex h-[42px] items-center gap-2.5 rounded-[10px] px-3 text-sm font-semibold text-ink2 hover:bg-soft hover:text-ink">
               <Icon name={icon} size="sm" />{t(label)}
             </a>
@@ -49,9 +50,8 @@ export default function SettingsPage() {
           <IdentitySection />
           <AutomationSection />
           <AiSection />
-          <GmailSection />
+          {!online && <GmailSection />}
           <DisplaySection />
-          <ExtensionSection />
           <SecuritySection />
           <DataSection />
           {flags.devMail && (

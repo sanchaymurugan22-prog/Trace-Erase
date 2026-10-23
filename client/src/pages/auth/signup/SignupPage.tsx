@@ -4,7 +4,7 @@ import { Link, useNavigate } from '@/lib/router';
 import { useI18n } from '@/i18n/I18nProvider';
 import { post } from '@/lib/api';
 import { AuthSplit } from '@/components/layout/AuthSplit';
-import { Button, Check, CompanyAvatar, Field, Icon, Input, InputGroup, Steps } from '@/components/ui';
+import { Button, Check, CompanyAvatar, Field, Icon, Input, InputGroup, PasswordInput, Steps } from '@/components/ui';
 import { savePending } from '../shared/pending';
 import { firebaseEnabled } from '@/lib/config';
 import { continueWithGoogle, googleEnabled, signUpWithEmail } from '@/lib/firebaseAuth';
@@ -69,7 +69,7 @@ export default function SignupPage() {
         {firebaseEnabled && googleEnabled() && <><GoogleButton onClick={google} disabled={busy} /><OrLine /></>}
         <Field label={t('Full name')} htmlFor="nm"><Input id="nm" required autoComplete="name" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} /></Field>
         <Field label={t('Real email')} htmlFor="em"><Input id="em" type="email" required autoComplete="email" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} /></Field>
-        {firebaseEnabled && <Field label={t('Password')} htmlFor="pw" hint={t('At least 8 characters.')}><Input id="pw" type="password" required minLength={8} autoComplete="new-password" value={f.password} onChange={e => setF({ ...f, password: e.target.value })} /></Field>}
+        {firebaseEnabled && <Field label={t('Password')} htmlFor="pw" hint={t('At least 8 characters.')}><PasswordInput id="pw" required minLength={8} autoComplete="new-password" value={f.password} onChange={e => setF({ ...f, password: e.target.value })} /></Field>}
         <Field label={firebaseEnabled ? t('Real mobile number (optional)') : t('Real mobile number')} htmlFor="ph" hint={firebaseEnabled ? t('Text-message (SMS) verification is not available on our free plan, so your number is saved without a code check. It is used only in your legal requests.') : undefined}>
           <InputGroup id="ph" dir="ltr" required={!firebaseEnabled} inputMode="tel" autoComplete="tel-national" value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} placeholder="98765 43210"
             prefix={<><span className="font-semibold text-ink2">+91</span><span className="h-6 w-px bg-line2" /></>} />

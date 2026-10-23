@@ -78,7 +78,7 @@ export default function ProtectPage() {
           <Card>
             <h2 className="text-xl font-bold">{t('What happens next')}</h2>
             <Timeline items={[
-              { icon: 'edit', state: 'current', title: <span className="font-semibold">{t('Use these details to sign up')}</span>, sub: <span className="text-[13px] text-mute">{t('Paste them, or let the extension fill the form.')}</span> },
+              { icon: 'edit', state: 'current', title: <span className="font-semibold">{t('Use these details to sign up')}</span>, sub: <span className="text-[13px] text-mute">{t('Copy them into the sign-up form.')}</span> },
               { icon: 'inbox', state: 'todo', title: <span className="font-semibold">{t('Their emails reach your inbox')}</span>, sub: <span className="text-[13px] text-mute">{t('Order updates and codes arrive as normal.')}</span> },
               { icon: 'siren', state: 'todo', title: <span className="font-semibold">{t('Anyone else is caught')}</span>, sub: <span className="text-[13px] text-mute">{t('If a stranger uses this address, you get a leak alert.')}</span> }
             ]} />

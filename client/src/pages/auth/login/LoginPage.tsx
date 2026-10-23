@@ -5,7 +5,7 @@ import { useSession } from '@/lib/session';
 import { post } from '@/lib/api';
 import { passkeyErrorMessage, passkeysSupported, signWithPasskey } from '@/lib/webauthn';
 import { AuthSplit } from '@/components/layout/AuthSplit';
-import { Button, Field, Icon, Input, Tile, type IconName } from '@/components/ui';
+import { Button, Field, Icon, Input, PasswordInput, Tile, type IconName } from '@/components/ui';
 import { savePending } from '../shared/pending';
 import { firebaseEnabled } from '@/lib/config';
 import { continueWithGoogle, googleEnabled, logInWithEmail, sendPasswordReset } from '@/lib/firebaseAuth';
@@ -86,7 +86,7 @@ export default function LoginPage() {
             {googleEnabled() && <GoogleButton onClick={withGoogle} disabled={!!busy} />}
             <OrLine text="or use your email and password" />
             <Field label={t('Email')} htmlFor="idf"><Input id="idf" type="email" required value={id} onChange={e => setId(e.target.value)} autoComplete="username" /></Field>
-            <Field label={t('Password')} htmlFor="pwf"><Input id="pwf" type="password" required value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" /></Field>
+            <Field label={t('Password')} htmlFor="pwf"><PasswordInput id="pwf" required value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" /></Field>
             <Button type="submit" variant="secondary" size="lg" full loading={busy === 'pw'} disabled={!!busy}>{t('Log in')}</Button>
             <button type="button" className="self-center text-sm font-semibold text-brand" onClick={forgot} disabled={!!busy}>{t('Forgot password?')}</button>
           </>

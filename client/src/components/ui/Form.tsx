@@ -1,5 +1,7 @@
-import { forwardRef } from 'react';
+import { forwardRef, useState } from 'react';
 import { cn } from '@/lib/format';
+import { useT } from '@/i18n/I18nProvider';
+import { Icon } from './Icon';
 
 export const inputClass = 'h-12 w-full rounded-xl border-[1.5px] border-line2 bg-card px-3.5 text-[15px] text-ink outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/15 disabled:opacity-60';
 
@@ -31,6 +33,21 @@ export function InputGroup({ prefix, className, dir, ...rest }: React.InputHTMLA
     <div dir={dir} className={cn('flex h-12 items-center gap-2.5 rounded-xl border-[1.5px] border-line2 bg-card px-3.5 focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/15', className)}>
       {prefix}
       <input className="min-w-0 flex-1 border-0 bg-transparent text-[15px] text-ink outline-none" {...rest} />
+    </div>
+  );
+}
+
+/** Password box with a show / hide eye button. */
+export function PasswordInput({ className, ...rest }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [show, setShow] = useState(false);
+  const t = useT();
+  return (
+    <div className={cn('flex h-12 items-center rounded-xl border-[1.5px] border-line2 bg-card pl-3.5 pr-1.5 focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/15', className)}>
+      <input type={show ? 'text' : 'password'} className="min-w-0 flex-1 border-0 bg-transparent text-[15px] text-ink outline-none" {...rest} />
+      <button type="button" onClick={() => setShow(v => !v)} aria-label={t(show ? 'Hide password' : 'Show password')} aria-pressed={show}
+        className="inline-flex size-9 flex-none items-center justify-center rounded-lg text-mute hover:bg-soft hover:text-ink">
+        <Icon name={show ? 'eyeoff' : 'eye'} />
+      </button>
     </div>
   );
 }

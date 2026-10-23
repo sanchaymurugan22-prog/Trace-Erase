@@ -8,7 +8,6 @@ import { cn } from '@/lib/format';
 import { OnboardingHeader } from '@/components/layout/OnboardingHeader';
 import { Button, ButtonLink, Card, Chip, Icon, Tile, useToast } from '@/components/ui';
 import { GmailSetupDialog } from './GmailSetupDialog';
-import { ExtensionHelpDialog } from './ExtensionHelpDialog';
 import { UploadMailList } from './UploadMailList';
 import type { MailRow } from './parseUpload';
 import { gmailAccessToken, googleEnabled, preloadGoogle } from '@/lib/firebaseAuth';
@@ -116,22 +115,19 @@ export default function ConnectPage() {
           <Option selected={source === 'upload'} onSelect={upload ? () => setSource('upload') : undefined}>
             <Tile icon="upload" size="lg" />
             <div className="flex min-w-0 flex-1 flex-col gap-3">
-              <div className="flex items-center justify-between gap-2"><span className="text-xl font-bold">{t('Upload your mail list')}</span>{upload && <Radio on={source === 'upload'} />}</div>
-              <p className="text-sm text-mute">{t('No Gmail connection needed: export your mail from Google Takeout (or any CSV of senders). It is read in your browser.')}</p>
+              <div className="flex items-center justify-between gap-2"><span className="text-xl font-bold">{t('Upload your email export')}</span>{upload && <Radio on={source === 'upload'} />}</div>
+              <p className="text-sm text-mute">{t('A copy of your mailbox lets AI see which companies email you, and so which ones have your data. Only the sender, subject and date are used, and the file is read inside your browser.')}</p>
+              <ol className="m-0 flex list-decimal flex-col gap-1 pl-5 text-[13px] text-ink2">
+                <li>{t('Open')} <a href="https://takeout.google.com/" target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>takeout.google.com</a> {t('and press "Deselect all".')}</li>
+                <li>{t('Tick only "Mail", then "Next step" and "Create export".')}</li>
+                <li>{t('Google emails you a download link (minutes to a few hours). Unzip it and upload the .mbox file here.')}</li>
+              </ol>
               <div onClick={e => e.stopPropagation()}>
                 <UploadMailList value={upload} onChange={v => { setUpload(v); if (v) { setSource('upload'); toast(t('{n} emails read from {file}', { n: v.rows.length, file: v.name })); } else if (source === 'upload') setSource(isDemo ? 'sample' : 'gmail'); }} />
               </div>
             </div>
           </Option>
 
-          {/* Extension */}
-          <Option selected={false}>
-            <Tile icon="ext" size="lg" />
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-              <div className="flex items-center justify-between gap-2"><span className="text-xl font-bold">{t('Browser extension')}</span><Button variant="secondary" size="sm" onClick={() => setDialog('ext')}>{t('How to install')}</Button></div>
-              <p className="text-sm text-mute">{t('Fills your protected email and number on any sign-up form, and warns you about the site’s privacy policy.')}</p>
-            </div>
-          </Option>
         </div>
 
         <Card className="flex-row flex-wrap gap-0 overflow-hidden p-0">
@@ -146,7 +142,6 @@ export default function ConnectPage() {
         </div>
       </main>
       {dialog === 'gmail' && <GmailSetupDialog onClose={() => setDialog('')} onSaved={() => { setDialog(''); refresh(); }} />}
-      {dialog === 'ext' && <ExtensionHelpDialog onClose={() => setDialog('')} />}
     </div>
   );
 }
