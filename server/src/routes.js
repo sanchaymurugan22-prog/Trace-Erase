@@ -2,6 +2,7 @@
 import crypto from 'node:crypto';
 import { parseEmail } from './util/mime.js';
 import { describeAction, logActivity } from './services/activity.js';
+import * as authEmails from './services/authEmails.js';
 import { config, devMailOnly, reloadConfig, ENV_FILE, usesProtectedEmail } from './config.js';
 import { updateEnvFile } from './util/env.js';
 import * as staff from './services/staff.js';
@@ -101,6 +102,8 @@ export function registerRoutes(app) {
   });
   app.post('/api/auth/logout', (req, res) => { auth.endSession(res); return { ok: true }; });
   // Firebase Authentication (email + password, or Google): the website signs in with Firebase and sends us the ID token
+  app.post('/api/auth/email/verify', (req) => authEmails.sendVerification(req.body || {}));
+  app.post('/api/auth/email/reset', (req) => authEmails.sendPasswordReset(req.body || {}));
   app.post('/api/auth/firebase', async (req, res) => {
     const user = await auth.firebaseLogin(req.body);
     const token = auth.startSession(res, user);
@@ -184,7 +187,7 @@ export function registerRoutes(app) {
     const gmailToken = typeof req.body.accessToken === 'string' && /^[\w.\-~+/=]{20,4096}$/.test(req.body.accessToken) ? req.body.accessToken : null;
     if (source === 'gmail' && !gmailToken && !req.user.gmail?.refreshToken) throw bad('Connect Gmail first');
     if (source === 'gmail' && req.user.demo) throw bad('Demo accounts use the sample inbox. Sign up to scan your own Gmail.');
-    return discovery.startScan(req.user, { source, messages: req.body.messages, gmailToken });
+    return discovery.startScan(req.user, { source, messages: req.body.messages, gmailToken, typed: !!req.body.typed });
   });
   app.get('/api/scan/latest', (req) => { U(req); return discovery.latestScan(req.user.id); });
   app.get('/api/scan/:id', (req) => { U(req); const s = db.get('scans', req.params.id); if (!s || s.userId !== req.user.id) throw notFound(); return s; });

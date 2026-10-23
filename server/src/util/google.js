@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 
 let account = null;
-let cached = { token: null, exp: 0, scope: '' };
+const cache = new Map(); // scope -> { token, exp }
 
 /** Parses FIREBASE_SERVICE_ACCOUNT once. Returns null when it is not set. */
 export function serviceAccount() {
@@ -33,7 +33,8 @@ const b64url = (v) => Buffer.from(typeof v === 'string' ? v : JSON.stringify(v))
 export async function accessToken(scope = 'https://www.googleapis.com/auth/datastore') {
   const sa = serviceAccount();
   if (!sa) throw new Error('No service account configured');
-  if (cached.token && cached.scope === scope && cached.exp > Date.now() + 60_000) return cached.token;
+  const hit = cache.get(scope);
+  if (hit && hit.exp > Date.now() + 60_000) return hit.token;
   const tokenUri = sa.token_uri || 'https://oauth2.googleapis.com/token';
   const now = Math.floor(Date.now() / 1000);
   const unsigned = `${b64url({ alg: 'RS256', typ: 'JWT', kid: sa.private_key_id })}.${b64url({ iss: sa.client_email, scope, aud: tokenUri, iat: now, exp: now + 3600 })}`;
@@ -44,8 +45,8 @@ export async function accessToken(scope = 'https://www.googleapis.com/auth/datas
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.access_token) throw new Error(`Google token error ${r.status}: ${j.error_description || j.error || 'unknown'}`);
-  cached = { token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000, scope };
-  return cached.token;
+  cache.set(scope, { token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 });
+  return j.access_token;
 }
 
 export const projectId = () => process.env.FIREBASE_PROJECT_ID || serviceAccount()?.project_id || '';

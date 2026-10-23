@@ -13,7 +13,11 @@ import type { MailRow } from './parseUpload';
 import { gmailAccessToken, googleEnabled, preloadGoogle } from '@/lib/firebaseAuth';
 import { GMAIL_SCAN } from '@/lib/config';
 
-type Source = 'gmail' | 'sample' | 'upload';
+type Source = 'gmail' | 'sample' | 'upload' | 'typed';
+
+/** "Swiggy, zomato.com, IRCTC" → rows the scan understands (a sender at each company's website). */
+const typedRows = (text: string): MailRow[] => [...new Set(text.split(/[\n,;]+/).map(x => x.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')).filter(x => x.length > 1))]
+  .map(x => ({ from: `${x.split('.')[0]} <noreply@${x.includes('.') ? x : x.replace(/[^a-z0-9]/g, '') + '.com'}>`, subject: '', date: new Date().toISOString() }));
 
 function Option({ selected, onSelect, children, disabled }: { selected: boolean; onSelect?: () => void; children: React.ReactNode; disabled?: boolean }) {
   return (
@@ -43,10 +47,12 @@ export default function ConnectPage() {
   const browserGmail = GMAIL_SCAN && googleEnabled() && !isDemo;
   // Online without direct Gmail access: people upload a mail export instead
   const gmailReady = !isDemo && (browserGmail || !!user?.gmailConnected);
-  const [source, setSource] = useState<Source>(isDemo ? 'sample' : gmailReady ? 'gmail' : 'upload');
+  const [source, setSource] = useState<Source>(isDemo ? 'sample' : gmailReady ? 'gmail' : 'typed');
   useEffect(() => { if (browserGmail) preloadGoogle(); }, [browserGmail]);
   const [upload, setUpload] = useState<{ name: string; rows: MailRow[] } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [typed, setTyped] = useState('');
+  const typedList = typedRows(typed);
   const [dialog, setDialog] = useState<'' | 'gmail' | 'ext'>('');
 
   useEffect(() => {
@@ -61,7 +67,7 @@ export default function ConnectPage() {
     setBusy(true);
     try {
       const accessToken = source === 'gmail' && browserGmail ? await gmailAccessToken(user?.email) : undefined;
-      const scan = await post('/scan', { source, accessToken, messages: source === 'upload' ? upload?.rows : undefined });
+      const scan = await post('/scan', { source: source === 'typed' ? 'upload' : source, typed: source === 'typed', accessToken, messages: source === 'upload' ? upload?.rows : source === 'typed' ? typedList : undefined });
       navigate('/onboarding/scan?id=' + scan.id);
     } catch (e: any) { toast(t(e.message), 'err'); setBusy(false); }
   };
@@ -121,6 +127,20 @@ export default function ConnectPage() {
             </div>
           </Option>
 
+          {/* Quickest: type the apps you use */}
+          {!isDemo && (
+            <Option selected={source === 'typed'} onSelect={() => setSource('typed')}>
+              <Tile icon="edit" size="lg" />
+              <div className="flex min-w-0 flex-1 flex-col gap-3">
+                <div className="flex items-center justify-between gap-2"><span className="text-xl font-bold">{t('Type the apps you use')}</span><Chip tone="ok">{t('Quickest')}</Chip></div>
+                <p className="text-sm text-mute">{t('No file needed. Write the apps and websites you have accounts with, separated by commas. AI finds each company, what it keeps and who it shares with.')}</p>
+                <textarea value={typed} onClick={e => e.stopPropagation()} onFocus={() => setSource('typed')} onChange={e => { setTyped(e.target.value); setSource('typed'); }} rows={3}
+                  placeholder={t('e.g. Swiggy, Zomato, Flipkart, irctc.co.in, Netflix')}
+                  className="w-full rounded-xl border-[1.5px] border-line2 bg-card px-3.5 py-3 text-[15px] text-ink outline-none focus:border-brand focus:ring-4 focus:ring-brand/15" />
+                {typedList.length > 0 && <span className="text-[13px] text-mute">{t('{n} apps', { n: typedList.length })}</span>}
+              </div>
+            </Option>
+          )}
         </div>
 
         <Card className="flex-row flex-wrap gap-0 overflow-hidden p-0">
@@ -131,7 +151,7 @@ export default function ConnectPage() {
 
         <div className="flex justify-between">
           <ButtonLink to="/onboarding/identity" variant="secondary" size="lg"><Icon name="cl" />{t('Back')}</ButtonLink>
-          <Button size="lg" loading={busy} disabled={(source === 'upload' && !upload?.rows.length) || (source === 'gmail' && !gmailReady)} onClick={start}>{!busy && <Icon name="sparkle" />}{t('Start AI scan')}</Button>
+          <Button size="lg" loading={busy} disabled={(source === 'upload' && !upload?.rows.length) || (source === 'typed' && !typedList.length) || (source === 'gmail' && !gmailReady)} onClick={start}>{!busy && <Icon name="sparkle" />}{t('Start AI scan')}</Button>
         </div>
       </main>
       {dialog === 'gmail' && <GmailSetupDialog onClose={() => setDialog('')} onSaved={() => { setDialog(''); refresh(); }} />}

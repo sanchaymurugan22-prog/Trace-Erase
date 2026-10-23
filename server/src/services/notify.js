@@ -26,9 +26,9 @@ const parseAddr = (v) => {
   return m ? { name: m[1].trim() || undefined, email: m[2].trim() } : { email: String(v || '').trim() };
 };
 
-async function viaBrevo({ from, to, replyTo, cc, subject, text }) {
+async function viaBrevo({ from, to, replyTo, cc, subject, text, html }) {
   const sender = parseAddr(from);
-  const body = { sender: { email: sender.email, ...(sender.name ? { name: sender.name } : {}) }, to: [parseAddr(to)], subject, textContent: text };
+  const body = { sender: { email: sender.email, ...(sender.name ? { name: sender.name } : {}) }, to: [parseAddr(to)], subject, textContent: text, ...(html ? { htmlContent: html } : {}) };
   if (replyTo) body.replyTo = parseAddr(replyTo);
   if (cc) body.cc = [parseAddr(cc)];
   const r = await fetch(`${config.brevo.baseUrl.replace(/\/$/, '')}/v3/smtp/email`, {
@@ -46,7 +46,7 @@ export const systemFrom = () => config.brevo.from || config.smtp.from;
  * Send an email. It is always recorded in the outbox. It is delivered for real when Brevo or SMTP is set,
  * `deliver` is true, and the account is not a demo account (demo accounts never send real email).
  */
-export async function sendEmail({ userId = null, to, from, replyTo, cc, subject, text, kind = 'email', meta = {}, deliver = true, holdNote }) {
+export async function sendEmail({ userId = null, to, from, replyTo, cc, subject, text, html, kind = 'email', meta = {}, deliver = true, holdNote }) {
   const user = userId ? db.get('users', userId) : null;
   const demo = !!user?.demo;
   const willSend = deliver && !demo && !devMailOnly;
@@ -58,12 +58,12 @@ export async function sendEmail({ userId = null, to, from, replyTo, cc, subject,
   if (!willSend) return rec;
   try {
     if (config.brevo.apiKey) {
-      const id = await viaBrevo({ from: from || systemFrom(), to, replyTo, cc, subject, text });
+      const id = await viaBrevo({ from: from || systemFrom(), to, replyTo, cc, subject, text, html });
       db.update('outbox', rec.id, { delivered: true, deliveryNote: 'Sent by Brevo', providerId: id || null });
     } else {
       const t = await getTransport();
       if (!t) { db.update('outbox', rec.id, { deliveryNote: 'Email service not available' }); return rec; }
-      await t.sendMail({ from: from || systemFrom(), to, replyTo, cc, subject, text });
+      await t.sendMail({ from: from || systemFrom(), to, replyTo, cc, subject, text, html });
       db.update('outbox', rec.id, { delivered: true, deliveryNote: 'Sent by SMTP' });
     }
   } catch (e) {

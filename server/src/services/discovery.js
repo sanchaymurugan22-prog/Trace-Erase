@@ -16,11 +16,11 @@ function parseFrom(from) {
 
 function update(scanId, patch) { return db.update('scans', scanId, patch); }
 
-export function startScan(user, { source = 'sample', messages = null, gmailToken = null } = {}) {
+export function startScan(user, { source = 'sample', messages = null, gmailToken = null, typed = false } = {}) {
   const scan = db.insert('scans', {
     userId: user.id, source, status: 'running', phase: 'Reading senders', progress: 2,
     sources: [
-      { key: 'mail', label: source === 'gmail' ? 'Gmail senders' : source === 'upload' ? 'Uploaded email export' : 'Gmail (demo sample inbox)', state: 'running', detail: '' },
+      { key: 'mail', label: source === 'gmail' ? 'Gmail senders' : typed ? 'Apps you listed' : source === 'upload' ? 'Uploaded email export' : 'Gmail (demo sample inbox)', state: 'running', detail: '' },
       { key: 'signins', label: 'Google sign-ins', state: 'waiting', detail: '' },
       { key: 'ai', label: 'AI identifying companies', state: 'waiting', detail: '' },
       { key: 'policies', label: 'Reading what each company keeps', state: 'waiting', detail: '' }
@@ -65,8 +65,9 @@ async function runScan(user, scanId, source, uploaded, gmailToken) {
   // 2. Google sign-ins (sample when Gmail is not connected)
   setSource(scanId, 'signins', { state: 'running' });
   await sleep(500);
-  const signins = source === 'gmail' ? [] : sampleGoogleSignins();
-  setSource(scanId, 'signins', { state: 'done', detail: signins.length ? `${signins.length} apps listed` : 'Connect Google to include these' });
+  // Sample Google sign-ins are demo data: only demo accounts get them
+  const signins = user.demo && source === 'sample' ? sampleGoogleSignins() : [];
+  setSource(scanId, 'signins', { state: 'done', detail: signins.length ? `${signins.length} apps listed` : 'Not included' });
   update(scanId, { progress: 35, phase: 'Identifying companies' });
 
   // 3. Known companies from the catalog; unknown domains go to AI
@@ -145,7 +146,7 @@ ${JSON.stringify(rows)}
 Return JSON {"headline":"one sentence, max 30 words, mentioning the most useful fact and where to start","tips":["3 short actions"]}`,
     json: true, temperature: 0.4
   }), () => ({
-    headline: `You haven't used ${unused} of these in over a year. ${topSharers.join(' and ')} share with the most partners. Start with those.`,
+    headline: `${unused ? `You haven't used ${unused} of these in over a year. ` : ''}${topSharers.filter(Boolean).join(' and ')} share${topSharers.length === 1 ? 's' : ''} your data with the most partners. Start with ${topSharers.length === 1 ? 'it' : 'those'}.`,
     tips: ['Delete accounts you no longer use', 'Switch old accounts to protected emails', 'Watch for leaks on your protected addresses']
   }));
   return { headline: res.headline, tips: res.tips || [], unused, sharing, total: rows.length, ai: res._ai };

@@ -63,7 +63,12 @@ async function exchange(idToken: string, extra: { name?: string; phone?: string;
   return r.user;
 }
 
-const sendVerification = (idToken: string) => call(FIREBASE.authBase, 'accounts:sendOobCode', {
+// Prefer TraceErase's own designed email (sent by our server); fall back to Firebase's standard one
+const sendVerification = async (idToken: string) => {
+  try { await post('/auth/email/verify', { idToken }); return; } catch { /* use Firebase's email */ }
+  return firebaseVerification(idToken);
+};
+const firebaseVerification = (idToken: string) => call(FIREBASE.authBase, 'accounts:sendOobCode', {
   requestType: 'VERIFY_EMAIL', idToken, continueUrl: `${location.origin}/signup/check-email?confirmed=1`
 }).catch(() => call(FIREBASE.authBase, 'accounts:sendOobCode', { requestType: 'VERIFY_EMAIL', idToken }));
 
@@ -99,7 +104,11 @@ export async function resendConfirmation() {
   await sendVerification(j.id_token);
 }
 
-export const sendPasswordReset = (email: string) =>
+export async function sendPasswordReset(email: string) {
+  try { await post('/auth/email/reset', { email: email.trim() }); return; } catch (e: any) { if (/valid email/i.test(e?.message || '')) throw e; }
+  return firebaseReset(email);
+}
+const firebaseReset = (email: string) =>
   call(FIREBASE.authBase, 'accounts:sendOobCode', { requestType: 'PASSWORD_RESET', email: email.trim() });
 
 // ---------- Google (Google Identity Services) ----------

@@ -34,7 +34,7 @@ export function describeAction(req, out) {
       if (!parts.length) return null;
       return { kind: 'settings', title: 'Settings changed', detail: 'Changed: ' + [...new Set(parts)].join(', ') };
     },
-    'POST /api/scan': () => ({ kind: 'scan', title: 'Started an AI scan', detail: b.source === 'upload' ? `Your email export (${plural((b.messages || []).length, 'email')})` : b.source === 'gmail' ? 'Your Gmail' : 'Sample Gmail inbox (demo)' }),
+    'POST /api/scan': () => ({ kind: 'scan', title: 'Started an AI scan', detail: b.typed ? `Apps you listed (${plural((b.messages || []).length, 'app')})` : b.source === 'upload' ? `Your email export (${plural((b.messages || []).length, 'email')})` : b.source === 'gmail' ? 'Your Gmail' : 'Sample Gmail inbox (demo)' }),
     'POST /api/requests/draft': () => ({ kind: 'request', title: `Prepared deletion request ${out?.number || ''}`, detail: plural(out?.targets?.length || 0, 'company') }),
     'POST /api/requests/:id/sign': () => ({ kind: 'request', title: `Signed and sent deletion request ${out?.number || ''}`, detail: `${plural(out?.targets?.length || 0, 'company')} · ${out?.signature ? 'signed with your passkey' : 'confirmed with your account'}`, link: out?.id ? `/app/requests/${out.id}` : null }),
     'POST /api/requests/:id/certificate': () => ({ kind: 'evidence', title: 'Deletion certificate issued', link: out?.id ? `/app/certificates/${out.id}` : null }),
