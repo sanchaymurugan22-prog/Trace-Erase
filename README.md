@@ -8,7 +8,7 @@
 
 [**🌐 Live Prototype → trace-erase.web.app**](https://trace-erase.web.app)
 
-Built by **Team Cranial Remission** for **DEXATHON 2026** · Problem Statement 4
+Built by **Team Cranial Remission** for **DEXATHON 2026** ·
 
 </div>
 
