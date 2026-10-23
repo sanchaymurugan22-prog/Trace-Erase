@@ -30,7 +30,7 @@ export async function runBatch() {
     const chainHash = sha256(`${prev?.chainHash || '0x0'}|${root}|${number}`);
     const batch = db.insert('batches', {
       number, root, leaves, chainHash, prevChainHash: prev?.chainHash || null, size: leaves.length,
-      anchoredAt: nowIso(), network: 'TraceErase local ledger', txHash: null
+      anchoredAt: nowIso(), network: 'TraceErase tamper-proof log', txHash: null
     });
     for (const r of pending) db.update('receipts', r.id, { batchId: batch.id, status: 'anchored' });
     anchorOnChain(batch).catch(e => console.warn('[ledger] on-chain anchoring failed:', e.message));

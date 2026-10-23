@@ -6,7 +6,8 @@ import { AiCard, AiTag, ButtonLink, Card, Chip, CompanyAvatar, Icon, Spinner, St
 
 export function MapDetail({ id }: { id: string }) {
   const t = useT();
-  const { data: d } = useApi<any>(`/companies/${id}`);
+  const { data: d, error } = useApi<any>(`/companies/${id}`);
+  if (error) return <Card><span className="text-sm text-mute">{t('Could not load these details.')}</span></Card>;
   if (!d) return <Card><Spinner /></Card>;
   return (
     <Card className="gap-4">

@@ -54,12 +54,6 @@ export default function SettingsPage() {
           <DisplaySection />
           <SecuritySection />
           <DataSection />
-          {flags.devMail && (
-            <Banner tone="info" icon="mail">
-              <span className="flex-1 text-sm">{t('No email service is set up, so outgoing emails and SMS are shown in the Dev outbox.')}</span>
-              <ButtonLink to="/app/outbox" variant="secondary" size="sm">{t('Open outbox')}</ButtonLink>
-            </Banner>
-          )}
         </div>
       </div>
     </AppShell>

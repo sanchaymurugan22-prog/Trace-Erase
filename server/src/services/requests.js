@@ -7,6 +7,7 @@ import { bad, notFound } from '../http.js';
 import { sha256, stableStringify } from '../util/crypto.js';
 import { addReceipt } from './ledger.js';
 import { createAlert, sendEmail } from './notify.js';
+import { logActivity } from './activity.js';
 import { draftLetter } from './letters.js';
 import { getPolicy, quickPolicy, readPoliciesInBackground } from './policy.js';
 import { partnersOf, addressFor, ensureAddress, publicCompany, getOrCreateCompany, upsertHolding, allowSender, rootDomain } from './companies.js';
@@ -22,9 +23,12 @@ function nextNumber(prefix, coll) {
   return `${prefix}${String(n).padStart(4, '0')}`;
 }
 
+const EVENT_KIND = { sent: 'letter', prepared: 'letter', reminder: 'escalation', grievance: 'escalation', overdue: 'escalation', otp: 'letter', reply: 'reply', claimed: 'reply', partial: 'reply', verified: 'reply', refused: 'reply' };
 function event(target, type, text, extra = {}) {
   const ev = { at: nowIso(), type, text, ...extra };
   db.update('targets', target.id, t => ({ events: [...(t.events || []), ev] }));
+  const company = db.get('companies', target.companyId);
+  logActivity(target.userId, { kind: EVENT_KIND[type] || 'request', actor: 'TraceErase', title: `${company?.name || 'Company'}: ${text}`, link: `/app/requests/${target.requestId}/targets/${target.id}` });
   return ev;
 }
 
@@ -117,21 +121,26 @@ async function dispatch(user, req, target) {
   const letter = await draftLetter(user, { kind, companyName: company.name, protectedEmail: identifier, requestNumber: req.number, viaCompany: via?.name, language: user.letterLanguage || 'en' });
   const guessed = !policy?.grievanceEmail;
   const to = policy?.grievanceEmail || policy?.suggestedEmail || `privacy@${company.domains?.[0] || 'example.com'}`;
-  // A guessed address is never emailed automatically: the person confirms it first
-  const realSend = sendsForReal(user, company) && !guessed;
+  // Letters are sent automatically (to the privacy address in the company's policy, or its standard privacy@ address)
+  const realSend = sendsForReal(user, company) && target.channel !== 'webform';
   const out = await sendEmail({
-    userId: user.id, to, from: fromLine(user, replyAddr?.email || user.email), subject: letter.subject, text: letter.body, kind: 'deletion-request',
+    userId: user.id, to, ...senderFor(user, replyAddr), subject: letter.subject, text: letter.body, kind: 'deletion-request',
     meta: { targetId: target.id }, deliver: realSend,
-    holdNote: guessed && sendsForReal(user, company) ? `Not sent yet: we couldn't confirm ${company.name}'s privacy email. Check the address and press Send.` : 'Ready to send. Real sending to companies is off (SEND_REAL_REQUESTS=false): review it and send it yourself, or turn it on.'
+    holdNote: user.demo ? 'Demo account: simulated, not really sent' : 'Automatic sending is not switched on on this server yet'
   });
   const letterRec = { ...letter, to, guessedAddress: guessed };
   if (target.channel === 'webform') {
     db.update('targets', target.id, { ...base, status: 'action-needed', delivery: 'manual', letter: letterRec, outboxId: out.id, formUrl: policy?.url || `https://${company.domains?.[0]}` });
     event(target, 'prepared', `${company.name} uses a web form. AI prepared the text for you to paste.`);
   } else {
-    const needsSend = sendsForReal(user, company) && !out.delivered;
-    db.update('targets', target.id, { ...base, status: needsSend ? 'action-needed' : 'sent', delivery: realSend && out.delivered ? 'email' : 'outbox', letter: letterRec, outboxId: out.id });
-    event(target, 'sent', realSend && out.delivered ? `Emailed to ${to}` : needsSend && !guessed ? `Sending to ${to} failed (${out.deliveryNote}). Press Send to try again.` : needsSend ? `Letter ready. Please confirm ${company.name}'s privacy email (${to}) and press Send.` : `AI letter ready in your outbox, addressed to ${to}`, { ai: letter._ai });
+    const failed = realSend && !out.delivered;
+    const delivery = user.demo ? 'demo' : realSend && out.delivered ? 'email' : 'not-sent';
+    db.update('targets', target.id, { ...base, status: failed ? 'action-needed' : 'sent', delivery, letter: letterRec, outboxId: out.id });
+    event(target, 'sent',
+      user.demo ? `AI letter emailed to ${to} (demo: simulated)`
+      : delivery === 'email' ? `AI letter emailed to ${to}${guessed ? ` (their policy names no privacy address, so the standard one was used)` : ''}`
+      : failed ? `Sending to ${to} failed (${out.deliveryNote}). TraceErase will show a Send again button.`
+      : `AI letter written for ${to}. Automatic sending is not switched on on this server yet.`, { ai: letter._ai });
   }
 }
 
@@ -170,7 +179,7 @@ export async function sendHeldLetter(user, targetId, toAddress) {
   const company = db.get('companies', t.companyId);
   if (!sendsForReal(user, company)) throw bad(user.demo ? 'Demo accounts never email real companies.' : 'Real sending is switched off on this server (SEND_REAL_REQUESTS).');
   const addr = t.addressId && db.get('addresses', t.addressId);
-  const out = await sendEmail({ userId: user.id, to, from: fromLine(user, addr?.email || t.identifier), subject: t.letter.subject, text: t.letter.body, kind: 'deletion-request', meta: { targetId: t.id }, deliver: true });
+  const out = await sendEmail({ userId: user.id, to, ...senderFor(user, addr), subject: t.letter.subject, text: t.letter.body, kind: 'deletion-request', meta: { targetId: t.id }, deliver: true });
   if (!out.delivered) throw bad(out.deliveryNote || 'Sending failed');
   // The legal clock starts when the company actually receives it
   const sentAt = nowIso();
@@ -347,15 +356,25 @@ async function escalateUser(user) {
 export const fromLine = (user, email) => `${String(user?.name || 'TraceErase user').replace(/["<>\r\n]/g, '').slice(0, 60)} <${email}>`;
 
 /** Real emails go to real companies only for real accounts, when sending is switched on. */
-export const sendsForReal = (user, company) => !!(config.sendRequestsForReal && !user?.demo && !company?.fictional && usesProtectedEmail(user));
+export const sendsForReal = (user, company) => !!(config.sendRequestsForReal && !user?.demo && !company?.fictional && !devMailOnlyNow());
+const devMailOnlyNow = () => !(config.brevo.apiKey || config.smtp.host);
+
+/** Who a letter is from. With a protected inbox: the person at their protected address.
+ *  Without one: the person "via TraceErase" from TraceErase's sending address, with replies going to their own inbox. */
+export function senderFor(user, replyAddr) {
+  if (replyAddr?.email && usesProtectedEmail(user)) return { from: fromLine(user, replyAddr.email) };
+  const sys = String(config.brevo.from || config.smtp.from || '').match(/<([^>]+)>/)?.[1] || config.brevo.from || config.smtp.from;
+  const name = String(user?.name || 'TraceErase user').replace(/["<>\r\n]/g, '').slice(0, 50);
+  return { from: `${name} via TraceErase <${sys}>`, replyTo: user.email, cc: user.email };
+}
 
 async function followUp(user, req, t, company, kind) {
   const letter = await draftLetter(user, { kind, companyName: company.name, protectedEmail: t.identifier, requestNumber: req.number, sentOn: fmtDate(t.sentAt), language: user.letterLanguage || 'en' });
-  const out = await sendEmail({ userId: user.id, to: t.letter?.to || `privacy@${company.domains?.[0]}`, from: fromLine(user, (t.addressId && db.get('addresses', t.addressId)?.email) || t.identifier), subject: letter.subject, text: letter.body, kind, deliver: sendsForReal(user, company) && t.delivery === 'email', holdNote: 'Ready to send (real sending is off).' });
+  const out = await sendEmail({ userId: user.id, to: t.letter?.to || `privacy@${company.domains?.[0]}`, ...senderFor(user, t.addressId && db.get('addresses', t.addressId)), subject: letter.subject, text: letter.body, kind, deliver: sendsForReal(user, company) && t.delivery === 'email', holdNote: user.demo ? 'Demo account: simulated, not really sent' : 'Automatic sending is not switched on on this server yet' });
   const what = kind === 'reminder' ? 'Reminder' : 'Formal grievance';
-  // When letters are sent by the person from their own email, ask them to send this one too
-  const manual = !out.delivered && !user.demo;
-  event(t, kind, manual ? `${what} ready: send it from your email (below)` : `${what} sent`, { letter: { ...letter, to: t.letter?.to } });
+  // Only when sending is impossible (manual-email requests from before automatic sending) is the person asked to send it
+  const manual = !out.delivered && !user.demo && t.delivery === 'manual-email';
+  event(t, kind, manual ? `${what} ready: send it from your email (below)` : user.demo ? `${what} emailed (demo: simulated)` : out.delivered ? `${what} emailed to ${t.letter?.to}` : `${what} written`, { letter: { ...letter, to: t.letter?.to } });
   if (manual) createAlert(user.id, { type: 'deadline', severity: 'warn', needsAction: true, title: `Send the ${what.toLowerCase()} to ${company.name}`, body: `No reply after ${daysBetween(t.sentAt, now())} days. The letter is ready to copy or open in your mail app.`, link: `/app/requests/${req.id}/targets/${t.id}` });
   addReceipt({ userId: user.id, companyId: company.id, kind: 'message', title: `${kind === 'reminder' ? 'Reminder' : 'Grievance'} for ${req.number} to ${company.name}`, data: { request: req.number, kind, subject: letter.subject, sentAt: nowIso() }, signedBy: 'TraceErase delivery log' });
   if (kind === 'grievance' && !manual) createAlert(user.id, { type: 'deadline', severity: 'warn', title: `Grievance sent to ${company.name}`, body: 'They ignored your request and a reminder.', link: `/app/requests/${req.id}` });
@@ -371,7 +390,7 @@ export function describeTarget(targetId) {
   const addr = t.addressId ? db.get('addresses', t.addressId) : null;
   const watchable = addr && addr.companyId === t.companyId && t.identifier === addr.email;
   const silenceLeft = t.status === 'claimed' && t.resolvedAt && watchable ? Math.max(0, SILENCE_DAYS - daysBetween(t.resolvedAt, now())) : null;
-  const canSend = !!(t.letter && t.channel !== 'webform' && t.delivery !== 'email' && !isResolved(t) && sendsForReal(db.get('users', t.userId), c));
+  const canSend = !!(t.letter && t.channel !== 'webform' && t.status === 'action-needed' && !isResolved(t) && sendsForReal(db.get('users', t.userId), c));
   return { ...t, company: publicCompany(c), via: via ? publicCompany(via) : null, day: age, resolved: isResolved(t), silenceLeft, canSend };
 }
 

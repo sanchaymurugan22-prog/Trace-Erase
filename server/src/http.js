@@ -48,11 +48,14 @@ export function createApp() {
   const middleware = [];
   let staticDir = null;
   let corsOrigins = new Set();
+  const afterHooks = [];
 
-  const add = (method) => (pattern, ...handlers) => routes.push({ method, ...compile(pattern), handlers });
+  const add = (method) => (pattern, ...handlers) => routes.push({ method, pattern, ...compile(pattern), handlers });
   const app = {
     get: add('GET'), post: add('POST'), put: add('PUT'), patch: add('PATCH'), delete: add('DELETE'),
     use: (fn) => middleware.push(fn),
+    /** Called after every successful request (used for the activity log). */
+    after: (fn) => { afterHooks.push(fn); },
     static: (dir) => { staticDir = dir; },
     /** Let the website on another address (Firebase Hosting) call this API. */
     cors: (origins) => { corsOrigins = new Set(origins.map(o => o.replace(/\/$/, ''))); },
@@ -118,11 +121,14 @@ export function createApp() {
         const m = r.re.exec(req.path);
         if (!m) continue;
         req.params = Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
+        req.routePattern = r.pattern;
+        const done = (out) => { for (const f of afterHooks) { try { f(req, out); } catch (e) { console.warn('[after]', e.message); } } };
         for (const h of r.handlers) {
           const out = await h(req, res);
-          if (res.writableEnded) return;
-          if (out !== undefined) return res.json(out);
+          if (res.writableEnded) { done(out); return; }
+          if (out !== undefined) { done(out); return res.json(out); }
         }
+        done(undefined);
         if (!res.writableEnded) res.json({ ok: true });
         return;
       }

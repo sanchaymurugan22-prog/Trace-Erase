@@ -13,12 +13,12 @@ const COLLECTIONS = [
   'users', 'otps', 'passkeys', 'challenges', 'addresses', 'companies', 'holdings', 'scans',
   'policies', 'requests', 'targets', 'receipts', 'batches', 'messages', 'alerts', 'evidence',
   'complaints', 'certificates', 'chats', 'outbox', 'staff', 'i18n',
-  'aiLog', 'meta', 'leaks', 'chatsIndex'
+  'aiLog', 'meta', 'leaks', 'chatsIndex', 'activity'
 ];
 // Short-lived collections that don't need to survive a restart
 const VOLATILE = new Set(['challenges']);
 // Keep these logs from growing forever
-const CAPS = { aiLog: 300 };
+const CAPS = { aiLog: 300, activity: 20000 };
 
 export const storage = serviceAccount() ? 'firestore' : 'file';
 const file = path.join(config.dataDir, 'db.json');

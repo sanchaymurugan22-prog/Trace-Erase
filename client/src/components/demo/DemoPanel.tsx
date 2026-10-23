@@ -181,7 +181,7 @@ export function DemoPanel() {
               </Section>
               <Section title={t('Tools')} icon="settings">
                 <div className="grid grid-cols-2 gap-2">
-                  <ButtonLink to="/app/outbox" variant="secondary" size="sm" onClick={() => setOpen(false)}><Icon name="inbox" size="sm" />{t('Dev outbox')}</ButtonLink>
+                  <ButtonLink to="/app/activity" variant="secondary" size="sm" onClick={() => setOpen(false)}><Icon name="inbox" size="sm" />{t('Activity log')}</ButtonLink>
                   <Button variant="secondary" size="sm" loading={busy === 'anchor'} onClick={() => run('anchor', async () => { const b = await post('/demo/anchor'); return b ? `Batch #${b.number} anchored (${b.size} receipts)` : 'Nothing new to anchor'; })}><Icon name="cube" size="sm" />{t('Anchor receipts')}</Button>
                 </div>
               </Section>

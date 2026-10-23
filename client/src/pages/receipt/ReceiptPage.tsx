@@ -18,9 +18,9 @@ export default function ReceiptPage({ params }: { params: Record<string, string>
   const v = r.verification;
   const d = r.data || {};
   const share = r.kind === 'share';
-  const proof: [string, string][] = [['Receipt fingerprint', r.hash], ...(v.batch
-    ? [['Batch', `#${v.batch.number} · ${t('{n} receipts', { n: v.batch.size })}`], ['Anchored', fmtDateTime(v.batch.anchoredAt)], ['Merkle root', v.batch.root], ...(v.batch.txHash ? [['Transaction', v.batch.txHash]] : [])] as [string, string][]
-    : [['Status', t('Bundled into the next batch within a minute')]] as [string, string][])];
+  const proof: [string, string][] = [['Unique code of this record', r.hash], ...(v.batch
+    ? [['Sealed in', t('Seal #{n} ({m} records in this seal)', { n: v.batch.number, m: v.batch.size })], ['Sealed on', fmtDateTime(v.batch.anchoredAt)], ['Code of the seal', v.batch.root], ...(v.batch.txHash ? [['Blockchain transaction', v.batch.txHash]] : [])] as [string, string][]
+    : [['Status', t('Will be sealed within a minute')]] as [string, string][])];
 
   return (
     <AppShell active="/app/evidence">
@@ -29,7 +29,7 @@ export default function ReceiptPage({ params }: { params: Record<string, string>
         <Card className="gap-[22px] p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-col gap-1"><span className="text-xs font-bold uppercase tracking-[.08em] text-mute">{t(KIND[r.kind] || 'Receipt')}</span><h1 className="text-[28px] font-bold leading-9">{t(r.title)}</h1></div>
-            {v.valid ? <Chip tone="ok" icon="shieldc">{t('Verified on ledger')}</Chip> : v.anchored ? <Chip tone="leak">{t('Check failed')}</Chip> : <Chip tone="pend" icon="clock">{t('Waiting for next batch')}</Chip>}
+            {v.valid ? <Chip tone="ok" icon="shieldc">{t('Genuine, not changed')}</Chip> : v.anchored ? <Chip tone="leak">{t('Changed after it was made')}</Chip> : <Chip tone="pend" icon="clock">{t('Being sealed')}</Chip>}
           </div>
           {share && r.partner && (
             <div className="flex flex-wrap items-center gap-5 rounded-[18px] bg-soft p-6">
@@ -61,20 +61,20 @@ export default function ReceiptPage({ params }: { params: Record<string, string>
         </Card>
         <div className="flex flex-col gap-6">
           <DarkPanel className="gap-1">
-            <div className="flex items-center justify-between pb-2"><span className="flex items-center gap-2 text-[17px] font-bold text-white"><Icon name="cube" className="text-accent-b" />{t('Ledger proof')}</span><span className="rounded-full bg-white/10 px-2.5 py-1 text-[13px] font-semibold">{t(v.batch?.network || 'Pending')}</span></div>
+            <div className="flex items-center justify-between pb-2"><span className="flex items-center gap-2 text-[17px] font-bold text-white"><Icon name="cube" className="text-accent-b" />{t('Tamper-proof seal')}</span><span className="rounded-full bg-white/10 px-2.5 py-1 text-[13px] font-semibold">{t(String(v.batch?.network || 'Being sealed').replace('TraceErase local ledger', 'TraceErase tamper-proof log'))}</span></div>
             {proof.map(([k, val]) => (
               <div key={k} className="flex flex-col gap-1 border-b border-white/8 py-3">
                 <span className="text-[13px] text-onm">{t(k)}</span>
                 {String(val).startsWith('0x') ? <span className="break-all rounded-lg bg-white/6 px-2 py-1 font-mono text-xs text-on" translate="no">{val}</span> : <span className="font-semibold text-white">{val}</span>}
               </div>
             ))}
-            {v.anchored && <span className="pt-2 text-[13px] text-accent-b">{t('Checks')}: {t('intact')} {v.intact ? '✓' : '✗'} · {t('in batch')} {v.inBatch ? '✓' : '✗'} · {t('chain')} {v.chainOk ? '✓' : '✗'}</span>}
+            {v.anchored && <span className="pt-2 text-[13px] text-accent-b">{t('Checks')}: {t('not changed')} {v.intact ? '✓' : '✗'} · {t('inside its seal')} {v.inBatch ? '✓' : '✗'} · {t('seals unbroken')} {v.chainOk ? '✓' : '✗'}</span>}
           </DarkPanel>
           <Card>
             <h2 className="text-[17px] font-bold">{t('What this means')}</h2>
             <div className="flex flex-col gap-3 text-sm text-ink2">
-              <span className="flex items-start gap-3"><Tile icon="lock" tone="accent" size="sm" />{t('Only a fingerprint is anchored. Your personal data is not.')}</span>
-              <span className="flex items-start gap-3"><Tile icon="edit" tone="accent" size="sm" />{t('If anyone changes this receipt, the fingerprint stops matching.')}</span>
+              <span className="flex items-start gap-3"><Tile icon="lock" tone="accent" size="sm" />{t('This receipt proves this step happened, and when. You can show it to the company, a lawyer or the Data Protection Board.')}</span>
+              <span className="flex items-start gap-3"><Tile icon="edit" tone="accent" size="sm" />{t('It is sealed: if anyone changes even one letter, the Public verify page shows it was changed. Only the code is sealed, never your personal details.')}</span>
               {share && <span className="flex items-start gap-3"><Tile icon="scale" tone="accent" size="sm" />{t('{from} said in writing that it gave your data to {to}.', { from: r.company?.name, to: r.partner?.name })}</span>}
             </div>
           </Card>

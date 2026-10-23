@@ -48,7 +48,6 @@ const CertificatePage = page(() => import('@/pages/certificates/CertificatePage'
 const AssistantPage = page(() => import('@/pages/assistant/AssistantPage'));
 const ActivityPage = page(() => import('@/pages/activity/ActivityPage'));
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'));
-const OutboxPage = page(() => import('@/pages/outbox/OutboxPage'));
 
 // Regulator console
 const RegulatorDashboardPage = page(() => import('@/pages/regulator/dashboard/RegulatorDashboardPage'));
@@ -98,7 +97,6 @@ export const ROUTES: [string, RouteComponent][] = [
   ['/app/assistant', U(AssistantPage)],
   ['/app/activity', U(ActivityPage)],
   ['/app/settings', U(SettingsPage)],
-  ['/app/outbox', U(OutboxPage)],
 
   ['/regulator', requireRegulator(RegulatorDashboardPage)]
 ];

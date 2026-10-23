@@ -27,7 +27,9 @@ export default function TargetDetailPage({ params }: { params: Record<string, st
   const events = tg.events || [];
   const real = !user?.demo;
   // Letters this person sends from their own email (no automatic sending on this server)
-  const selfSend = real && !tg.resolved && tg.channel !== 'webform' && !tg.canSend && tg.delivery !== 'email';
+  // Replies come to the person's own inbox, so they paste them here for AI to check
+  const pasteReply = real && !tg.resolved && tg.channel !== 'webform' && ['email', 'manual-email', 'not-sent'].includes(tg.delivery);
+  const selfSend = real && !tg.resolved && tg.delivery === 'manual-email';
   const mailto = (l: any) => `mailto:${l.to || ''}?subject=${encodeURIComponent(l.subject)}&body=${encodeURIComponent(l.body)}`;
 
   return (
@@ -90,7 +92,7 @@ export default function TargetDetailPage({ params }: { params: Record<string, st
           {tg.status === 'claimed' && tg.silenceLeft != null && (
             <Banner tone="info" icon="eye"><span className="text-sm">{t('Watching your {name}-only address. If no one uses it for {n} more days, this becomes Verified.', { name, n: tg.silenceLeft })}</span></Banner>
           )}
-          {selfSend && (
+          {pasteReply && (
             <Card>
               <h2 className="text-[17px] font-bold">{t('Got a reply in your inbox?')}</h2>
               <span className="text-sm text-mute">{t('Paste the email from {name} here. AI checks whether it really confirms deletion, what was kept and who your data was shared with.', { name })}</span>
@@ -130,15 +132,17 @@ export default function TargetDetailPage({ params }: { params: Record<string, st
             <Card className="gap-0 overflow-hidden p-0">
               <div className="flex flex-col gap-1 border-b border-line bg-soft px-[18px] py-3.5 text-sm">
                 <div className="flex items-center justify-between gap-2"><span className="font-bold">{letter.subject}</span><AiTag ai={letter._ai} label="AI letter" /></div>
-                <span className="text-[13px] text-mute">{t('To')} {letter.to}{letter.guessedAddress ? ` (${t('guessed address, check it')})` : ''} · {t('from')} {tg.identifier}</span>
+                <span className="text-[13px] text-mute">{t('To')} {letter.to}{letter.guessedAddress ? ` (${t('standard privacy address')})` : ''} · {t('about your account')} {tg.identifier}</span>
               </div>
               <div className="whitespace-pre-wrap p-[18px] text-sm text-ink2">{letter.body}</div>
               <div className="flex flex-wrap items-center gap-2 px-[18px] pb-[18px]">
                 <Button variant="secondary" size="sm" onClick={() => copyText(`${letter.subject}\n\n${letter.body}`, (m, k) => toast(t(m), k))}><Icon name="copy" size="sm" />{t('Copy')}</Button>
-                <a className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line2 bg-card px-3 text-sm font-semibold text-ink hover:bg-soft hover:text-ink" href={`mailto:${letter.to}?subject=${encodeURIComponent(letter.subject)}&body=${encodeURIComponent(letter.body)}`}><Icon name="mail" size="sm" />{t('Open in mail app')}</a>
-                {selfSend && !tg.manualSentAt && <ActionButton size="sm" onClick={async () => { await post(`/targets/${tg.id}/mark-sent`); toast(t('Noted. The 30-day clock starts today.')); reload(); }}><Icon name="check" size="sm" />{t("I've sent it")}</ActionButton>}
-                {selfSend && tg.manualSentAt ? <span className="text-[13px] text-mute">{t('You sent it on {date}', { date: fmtDateTime(tg.manualSentAt) })}</span>
-                  : tg.outbox && <span className="text-[13px] text-mute">{selfSend ? t('Send it from your own email: press "Open in mail app", then "I\'ve sent it".') : t(tg.outbox.deliveryNote || '')}</span>}
+                <span className="text-[13px] text-mute">{
+                  tg.delivery === 'email' ? t('Sent automatically on {date}, with a copy to your email.', { date: fmtDateTime(tg.sentAt) })
+                  : tg.delivery === 'demo' ? t('Demo: sending simulated on {date}.', { date: fmtDateTime(tg.sentAt) })
+                  : tg.delivery === 'manual' ? t('This company only accepts its web form: paste this text there.')
+                  : tg.delivery === 'manual-email' ? t('You sent it on {date}', { date: fmtDateTime(tg.manualSentAt || tg.sentAt) })
+                  : tg.status === 'preparing' ? t('AI is writing the letter') : t('Waiting to be sent')}</span>
               </div>
             </Card>
           )}

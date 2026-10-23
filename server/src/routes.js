@@ -1,6 +1,7 @@
 // All API routes.
 import crypto from 'node:crypto';
 import { parseEmail } from './util/mime.js';
+import { describeAction, logActivity } from './services/activity.js';
 import { config, devMailOnly, reloadConfig, ENV_FILE, usesProtectedEmail } from './config.js';
 import { updateEnvFile } from './util/env.js';
 import * as staff from './services/staff.js';
@@ -34,6 +35,14 @@ const U = (req) => auth.requireVerified(req);
 const needInbox = (req) => { if (!usesProtectedEmail(req.user)) throw bad('Protected email addresses are not available yet: they need an email domain, which this free setup does not have. You can try them in the demo.'); };
 
 export function registerRoutes(app) {
+  // Activity log: record what each successful action meant
+  app.after((req, out) => {
+    const what = describeAction(req, out);
+    if (!what) return;
+    const userId = req.user?.id || out?.user?.id || auth.currentUser(req)?.id;
+    if (userId) logActivity(userId, { ...what, actor: 'you' });
+  });
+
   // ---------- session & profile ----------
   app.get('/api/me', (req) => {
     const u = auth.currentUser(req);
@@ -333,6 +342,10 @@ export function registerRoutes(app) {
   app.get('/api/verify/:id', (req) => verifyReceipt(req.params.id));
 
   // ---------- activity, outbox ----------
+  app.get('/api/activity/account', (req) => {
+    U(req);
+    return db.filter('activity', a => a.userId === req.user.id).reverse().slice(0, 500);
+  });
   app.get('/api/activity', (req) => {
     U(req);
     const all = db.filter('messages', m => m.userId === req.user.id).reverse();

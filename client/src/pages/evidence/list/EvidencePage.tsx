@@ -20,12 +20,12 @@ export default function EvidencePage() {
     <AppShell>
       <div className="flex flex-col gap-1">
         <h1 className="text-4xl font-extrabold tracking-tight">{t('Evidence and proof')}</h1>
-        <p className="text-mute">{t('Everything here is timestamped and fingerprinted on the ledger. Anyone can verify it.')}</p>
+        <p className="text-mute">{t('Every important step gets a receipt: proof of what happened and when. Receipts are sealed so nobody can change them later, and anyone can check one on the Verify page.')}</p>
       </div>
       {loading ? <PageLoading /> : (
         <>
           <div className="grid gap-5 md:grid-cols-3">
-            <Kpi label={t('Receipts')} value={receipts?.length ?? 0} sub={t('Requests, replies, disclosures and leaks')} />
+            <Kpi label={t('Receipts')} value={receipts?.length ?? 0} sub={t('Proof of each request, reply, sharing and leak')} />
             <Kpi label={t('Evidence packs')} value={packs?.length ?? 0} sub={t('Ready for complaints')} />
             <Kpi label={t('Complaints')} value={complaints?.length ?? 0} sub={t('{n} filed', { n: (complaints || []).filter(c => c.status === 'filed').length })} />
           </div>
@@ -61,6 +61,12 @@ export default function EvidencePage() {
                 <h2 className="text-xl font-bold">{t('Receipts')}</h2>
                 <Chip>{receipts?.length || 0}</Chip>
               </div>
+              <div className="mx-6 mb-3 flex flex-col gap-1.5 rounded-xl bg-soft p-3.5 text-[13px] text-ink2">
+                <span><b>{t('Deletion request signed')}</b>: {t('proof that you asked, and when. The 30-day legal deadline counts from here.')}</span>
+                <span><b>{t('Company reply')}</b>: {t('proof of what the company said, deleted or kept.')}</span>
+                <span><b>{t('Deletion certificate')}</b>: {t('one summary of the whole request: who deleted, who kept what, who ignored you.')}</span>
+                <span><b>{t('Sealed')}</b>: {t('locked so it cannot be changed. Click a receipt to see it, or share its verify page.')}</span>
+              </div>
               {!receipts?.length ? <EmptyState icon="hash" title="No receipts yet">{t('Every request, reply and leak creates one.')}</EmptyState> : (
                 <div className="max-h-[560px] overflow-auto">
                   <table className="table">
@@ -72,7 +78,7 @@ export default function EvidencePage() {
                             <div className="text-[13px] text-mute">{fmtDateTime(r.issuedAt)}</div>
                           </td>
                           <td className="text-right">
-                            {r.status === 'anchored' ? <Chip tone="ok" icon="cube">{t('Anchored')}</Chip> : <Chip tone="pend" icon="clock">{t('Pending')}</Chip>}
+                            {r.status === 'anchored' ? <Chip tone="ok" icon="shieldc">{t('Sealed')}</Chip> : <Chip tone="pend" icon="clock">{t('Sealing…')}</Chip>}
                           </td>
                         </tr>
                       ))}

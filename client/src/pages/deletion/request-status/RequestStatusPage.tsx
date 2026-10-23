@@ -49,8 +49,11 @@ export default function RequestStatusPage({ params }: { params: Record<string, s
           <Banner tone="warn" icon="scale"><span className="flex-1"><b>{t('{name} ignored you for {n} days.', { name: overdue.company.name, n: overdue.day })}</b> {t('Your complaint to the Data Protection Board is drafted with all evidence attached.')}</span><Chip>{t('Review')}</Chip></Banner>
         </Link>
       )}
-      {r.targets.some(x => x.delivery === 'outbox') && (
-        <Banner tone="info" icon="mail"><span className="flex-1 text-sm">{t('Email requests are ready in your outbox. Real sending to companies is off on this server, so open each one to review it, copy it or send it from your mail app.')}</span><ButtonLink to="/app/outbox" variant="secondary" size="sm">{t('Open outbox')}</ButtonLink></Banner>
+      {r.targets.some(x => x.delivery === 'demo') && (
+        <Banner tone="info" icon="play"><span className="flex-1 text-sm">{t('Demo account: the letters below were written by AI and their sending is simulated. Use Demo controls to see companies reply.')}</span></Banner>
+      )}
+      {r.targets.some(x => x.delivery === 'email') && (
+        <Banner tone="ok" icon="send"><span className="flex-1 text-sm">{t('Sent automatically. Each company got its own AI-written letter, with a copy to your email. Replies come to your inbox: open a company below and paste its reply, and AI checks it.')}</span></Banner>
       )}
 
       <Card className="gap-0 overflow-hidden p-0">
@@ -63,7 +66,7 @@ export default function RequestStatusPage({ params }: { params: Record<string, s
                 return (
                   <tr key={tg.id}>
                     <td><div className="flex items-center gap-3"><CompanyAvatar company={tg.company} size="sm" /><span className="flex flex-col"><span className="font-bold" translate="no">{tg.company.name}</span>{tg.via && <span className="text-[13px] text-mute">{t('partner of {name}', { name: tg.via.name })}</span>}</span></div></td>
-                    <td className="text-mute">{t(tg.channel === 'webform' ? 'Web form' : tg.delivery === 'outbox' ? 'Email (outbox)' : 'Email')}</td>
+                    <td className="text-mute">{t(tg.channel === 'webform' ? 'Web form' : 'Email')}</td>
                     <td><span className="flex flex-col"><span className="clamp-2 max-w-[320px] text-sm">{t(last?.text || 'Waiting to send')}</span><span className="text-[13px] text-mute">{last ? fmtDate(last.at) : ''}</span></span></td>
                     <td><StatusChip status={tg.status} short /></td>
                     <td>{tg.verifyReceiptId || tg.receiptId ? <Link to={`/app/receipts/${tg.verifyReceiptId || tg.receiptId}`} className="flex items-center gap-1.5 text-sm"><Icon name="hash" size="sm" />{t('Receipt')}</Link>
