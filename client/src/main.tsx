@@ -6,6 +6,9 @@ import { SessionProvider } from '@/lib/session';
 import { ToastProvider } from '@/components/ui';
 import App from './App';
 import './index.css';
+import { warmUp } from '@/lib/api';
+
+warmUp();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

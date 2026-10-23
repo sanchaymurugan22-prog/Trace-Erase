@@ -3,6 +3,7 @@ import { Routes } from '@/lib/router';
 import { useI18n } from '@/i18n/I18nProvider';
 import { FullScreenLoader } from '@/components/layout/Guards';
 import { TranslatingOverlay } from '@/components/layout/TranslatingOverlay';
+import { WakeBanner } from '@/components/layout/WakeBanner';
 import { ROUTES, NotFoundPage } from './routes';
 
 export default function App() {
@@ -11,6 +12,7 @@ export default function App() {
     <Suspense fallback={<FullScreenLoader />}>
       <Routes routes={ROUTES} fallback={NotFoundPage} />
       {!ready && <TranslatingOverlay />}
+      <WakeBanner />
     </Suspense>
   );
 }
