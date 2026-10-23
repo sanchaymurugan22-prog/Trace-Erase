@@ -29,9 +29,27 @@ export function authHeaders(): Record<string, string> {
   return h;
 }
 
+// ---------- "server is waking up" (the free server sleeps when nobody uses it) ----------
+let pending = 0;
+let slowTimer: number | undefined;
+const wakeListeners = new Set<(slow: boolean) => void>();
+const setSlow = (v: boolean) => wakeListeners.forEach(f => f(v));
+export const onServerSlow = (f: (slow: boolean) => void) => { wakeListeners.add(f); return () => { wakeListeners.delete(f); }; };
+
 /** fetch() to the API with the sign-in token attached. */
-export const apiFetch = (path: string, init: RequestInit = {}) =>
-  fetch(apiUrl(path), { credentials: 'include', ...init, headers: { ...authHeaders(), ...(init.headers as Record<string, string> || {}) } });
+export async function apiFetch(path: string, init: RequestInit = {}) {
+  pending++;
+  if (pending === 1) slowTimer = window.setTimeout(() => setSlow(true), 4000);
+  try {
+    return await fetch(apiUrl(path), { credentials: 'include', ...init, headers: { ...authHeaders(), ...(init.headers as Record<string, string> || {}) } });
+  } finally {
+    pending--;
+    if (!pending) { window.clearTimeout(slowTimer); setSlow(false); }
+  }
+}
+
+/** Start waking the server as soon as the website opens. */
+export const warmUp = () => { if (API_URL) fetch(apiUrl('/api/health')).catch(() => {}); };
 
 export async function api<T = any>(path: string, { method = 'GET', body, signal }: Options = {}): Promise<T> {
   let res: Response;

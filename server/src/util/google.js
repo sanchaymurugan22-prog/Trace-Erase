@@ -11,7 +11,9 @@ export function serviceAccount() {
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || '').trim();
   if (!raw) { account = false; return null; }
   try {
-    const text = raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
+    // Accept the JSON (even with stray text pasted around it) or the same in base64
+    const json = raw.includes('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
+    const text = json.slice(json.indexOf('{'), json.lastIndexOf('}') + 1);
     const j = JSON.parse(text);
     if (!j.client_email || !j.private_key) throw new Error('missing client_email or private_key');
     // Keys pasted into dashboards sometimes keep "\n" as two characters
