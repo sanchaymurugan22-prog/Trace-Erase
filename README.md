@@ -49,71 +49,48 @@ India's **Digital Personal Data Protection (DPDP) Act 2023** gives every citizen
 ### 🔍 Discovery
 
 - **AI inbox scan** from a Gmail export (Google Takeout) or a one-click **sample mailbox**; Gmail connection is awaiting Google approval
-
 - **Live scan screen**: watch companies appear as the Discovery agent finds them
-
 - **Smart results** with filters: *Not used in a year*, *Used this month*, *Shares with partners*, *Needs a web form*
-
 - **AI privacy policy reader**: what each company collects, keeps by law, shares, and how fast it deletes
-
 - **Interactive data map**: You → companies → their partners → leaks
 
 ### 🗑️ Deletion
 
 - **One signed request** to many companies at once, signed with a WebAuthn **passkey**
-
 - **AI-written legal letters** citing DPDP Act Section 12(3), in **12 languages**
-
 - **Automatic sending** to each company's grievance or privacy address
-
 - **Partner chain deletion**: when a company names who it shared your data with, those partners get their own requests automatically
-
 - **AI reply checker**: genuine or not, what was deleted, what was kept and under which law
-
 - **Automatic escalation**: reminder on day 7, formal grievance on day 10, complaint ready on day 15
-
 - **Verification by silence**: if no one uses a company-only address for 30 days after it "deleted", the deletion becomes **Verified**
 
 ### 🛡️ Protection and leak tracing
 
 - **Protected email per app**, with allowed and blocked senders
-
 - **Leak detection**: a stranger emailing a company-only address is caught and blocked
-
 - **AI leak investigator**: traces which company or partner passed your address on, with a confidence level
-
 - **One-click actions**: block, ask the sender to delete, rotate the address, save evidence, add to complaint
 
 ### ✅ Proof and justice
 
 - **Tamper-proof receipts**: every step is fingerprinted (SHA-256) and sealed into a hash-chained Merkle ledger
-
 - **Public receipt verification**: anyone (a company, lawyer or regulator) can check a receipt without an account
-
 - **Evidence packs**, built automatically when a company ignores you or a leak is caught
-
 - **AI-drafted complaints** to the Data Protection Board, filed only with your approval
-
 - **Deletion certificate** with a QR code, downloadable as PDF
-
 - **Public company scores**: who actually deletes on time
 
 ### 👤 For everyone
 
 - **Ask TraceErase**: an AI assistant that answers questions about your own data, by text or voice
-
 - **Full activity log** of everything you did and everything TraceErase did
-
 - **12 languages**: English, Hindi, Tamil, Telugu, Kannada, Malayalam, Marathi, Gujarati, Bengali, Arabic, Spanish, French
-
 - **Privacy score**, smart alerts, light and dark themes, adjustable text size, data export and account deletion
 
 ### ⚖️ For the Data Protection Board
 
 - **Regulator console**: every filed complaint with its sealed evidence
-
 - **AI pattern detection** across complaints (for example, one ad network behind many leaks)
-
 - **Repeat offender ranking**
 
 ---
@@ -189,17 +166,13 @@ flowchart LR
 **Option 1: Demo account (recommended for judges)**
 
 1. Open the site → **Log in** → **Try the demo**
-
 2. On *Connect*, press **Start AI scan** (a sample mailbox is used)
-
 3. Open **Demo controls** (bottom right) → **Run the full story**: companies reply, time moves forward, a leak is traced, a complaint is filed and the certificate is issued
 
 **Option 2: Real account**
 
 1. **Sign up** with your email and password, then confirm your email
-
 2. Choose **Use sample emails** or upload your Google Takeout mail export
-
 3. Select companies → **Delete my data** → **Confirm and send**
 
 **Regulator console:** Log in → *Regulator login* → `regulator@traceerase.demo` / `Regulator@2026`
