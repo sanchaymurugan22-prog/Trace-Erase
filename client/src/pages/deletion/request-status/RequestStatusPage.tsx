@@ -5,14 +5,15 @@ import { useApi } from '@/hooks/useApi';
 import { post } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
 import { AppShell } from '@/components/layout/AppShell';
-import { ActionButton, Banner, ButtonLink, Card, Chip, CompanyAvatar, ErrorBox, Icon, PageLoading, Ring, StatusChip } from '@/components/ui';
+import { useToast, ActionButton, Banner, ButtonLink, Card, Chip, CompanyAvatar, ErrorBox, Icon, PageLoading, Ring, StatusChip } from '@/components/ui';
 import { EscalationSteps } from '@/components/shared/EscalationSteps';
 import type { DeletionRequest } from '@/types/api';
 
 export default function RequestStatusPage({ params }: { params: Record<string, string> }) {
   const navigate = useNavigate();
   const t = useT();
-  const { data: r, loading, error } = useApi<DeletionRequest & { autoEscalate?: boolean }>('/requests/' + params.id, { interval: 5000 });
+  const toast = useToast();
+  const { data: r, loading, error, reload } = useApi<DeletionRequest & { autoEscalate?: boolean }>('/requests/' + params.id, { interval: 5000 });
   if (loading) return <AppShell active="/app/requests"><PageLoading /></AppShell>;
   if (error || !r) return <AppShell active="/app/requests"><ErrorBox error={error} /></AppShell>;
   const overdue = r.targets.find(x => x.status === 'overdue' && x.complaintId);
@@ -50,7 +51,9 @@ export default function RequestStatusPage({ params }: { params: Record<string, s
         </Link>
       )}
       {r.targets.some(x => x.delivery === 'demo') && (
-        <Banner tone="info" icon="play"><span className="flex-1 text-sm">{t('Demo account: the letters below were written by AI and their sending is simulated. Use Demo controls to see companies reply.')}</span></Banner>
+        <Banner tone="info" icon="play"><span className="flex-1 text-sm">{t('Sample data: these letters were written by AI and their sending is simulated. Companies reply on their own schedule, or press the button to see their replies now.')}</span>
+          <ActionButton variant="secondary" size="sm" onClick={async () => { const out = await post<any[]>(`/requests/${r.id}/sample-replies`); toast(t('{n} companies replied', { n: out.length })); reload(); }}><Icon name="mail" size="sm" />{t('Get replies now')}</ActionButton>
+        </Banner>
       )}
       {r.targets.some(x => x.delivery === 'email') && (
         <Banner tone="ok" icon="send"><span className="flex-1 text-sm">{t('Sent automatically. Each company got its own AI-written letter, with a copy to your email. Replies come to your inbox: open a company below and paste its reply, and AI checks it.')}</span></Banner>

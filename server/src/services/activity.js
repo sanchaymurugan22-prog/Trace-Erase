@@ -53,7 +53,8 @@ export function describeAction(req, out) {
     'DELETE /api/me': () => ({ kind: 'account', title: 'Deleted the TraceErase account' }),
     'POST /api/demo/advance': () => ({ kind: 'account', title: `Demo clock moved forward ${plural(Number(b.days) || 1, 'day')}` }),
     'POST /api/demo/leak': () => ({ kind: 'leak', title: 'Demo: simulated a leak' }),
-    'POST /api/demo/replies': () => ({ kind: 'reply', title: 'Demo: companies replied' })
+    'POST /api/demo/replies': () => ({ kind: 'reply', title: 'Demo: companies replied' }),
+    'POST /api/requests/:id/sample-replies': () => ({ kind: 'reply', title: 'Sample companies replied' })
   };
   const f = R[`${m} ${p}`];
   if (f) return f();

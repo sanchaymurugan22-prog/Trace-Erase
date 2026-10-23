@@ -20,7 +20,7 @@ export function startScan(user, { source = 'sample', messages = null, gmailToken
   const scan = db.insert('scans', {
     userId: user.id, source, status: 'running', phase: 'Reading senders', progress: 2,
     sources: [
-      { key: 'mail', label: source === 'gmail' ? 'Gmail senders' : typed ? 'Apps you listed' : source === 'upload' ? 'Uploaded email export' : 'Gmail (demo sample inbox)', state: 'running', detail: '' },
+      { key: 'mail', label: source === 'gmail' ? 'Gmail senders' : typed ? 'Apps you listed' : source === 'upload' ? 'Uploaded email export' : 'Gmail (sample inbox)', state: 'running', detail: '' },
       { key: 'signins', label: 'Google sign-ins', state: 'waiting', detail: '' },
       { key: 'ai', label: 'AI identifying companies', state: 'waiting', detail: '' },
       { key: 'policies', label: 'Reading what each company keeps', state: 'waiting', detail: '' }
@@ -66,7 +66,7 @@ async function runScan(user, scanId, source, uploaded, gmailToken) {
   setSource(scanId, 'signins', { state: 'running' });
   await sleep(500);
   // Sample Google sign-ins are demo data: only demo accounts get them
-  const signins = user.demo && source === 'sample' ? sampleGoogleSignins() : [];
+  const signins = source === 'sample' ? sampleGoogleSignins() : [];
   setSource(scanId, 'signins', { state: 'done', detail: signins.length ? `${signins.length} apps listed` : 'Not included' });
   update(scanId, { progress: 35, phase: 'Identifying companies' });
 
@@ -112,7 +112,7 @@ ${JSON.stringify(list)}`,
   }
   for (const s of signins) {
     const c = getOrCreateCompany({ name: s.app, domain: s.domain, category: 'Other' });
-    add(c, { sources: ['google-signin'], lastSeen: s.lastUsed });
+    add(c, { sources: [source === 'sample' ? 'sample' : 'google-signin'], lastSeen: s.lastUsed });
   }
   const uniq = [...new Map(found.map(c => [c.id, c])).values()];
   for (let i = 0; i < uniq.length; i += 4) {

@@ -183,7 +183,6 @@ export function registerRoutes(app) {
     const source = req.body.source || (req.user.demo ? 'sample' : 'gmail');
     if (!['sample', 'gmail', 'upload'].includes(source)) throw bad('Unknown scan source');
     // The sample inbox is pretend data, so only demo accounts may use it
-    if (source === 'sample' && !req.user.demo) throw bad('The sample inbox is only for demo accounts. Scan your Gmail or upload a list instead.');
     const gmailToken = typeof req.body.accessToken === 'string' && /^[\w.\-~+/=]{20,4096}$/.test(req.body.accessToken) ? req.body.accessToken : null;
     if (source === 'gmail' && !gmailToken && !req.user.gmail?.refreshToken) throw bad('Connect Gmail first');
     if (source === 'gmail' && req.user.demo) throw bad('Demo accounts use the sample inbox. Sign up to scan your own Gmail.');
@@ -270,6 +269,14 @@ export function registerRoutes(app) {
     if (!r || r.userId !== req.user.id || r.status !== 'draft') throw bad('Only drafts can be removed');
     db.remove('targets', t => t.requestId === r.id); db.remove('requests', x => x.id === r.id);
     return { ok: true };
+  });
+  // Sample-inbox companies: their (pretend) replies arrive now instead of on their schedule
+  app.post('/api/requests/:id/sample-replies', (req) => {
+    U(req);
+    if (!config.demoMode) throw forbidden('Sample data is switched off on this server');
+    const r = db.get('requests', req.params.id);
+    if (!r || r.userId !== req.user.id) throw notFound();
+    return demo.repliesNow(req.user);
   });
   app.post('/api/targets/:id/mark-sent', (req) => { U(req); return reqs.markSentManually(req.user, req.params.id); });
   app.post('/api/targets/:id/reply', (req) => { U(req); return reqs.pasteReply(req.user, req.params.id, req.body || {}); });

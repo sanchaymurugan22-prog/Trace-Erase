@@ -4,8 +4,8 @@
 import { db } from '../db.js';
 import { bad } from '../http.js';
 import { advanceDays, offsetDays, now, daysBetween, nowIso } from './clock.js';
-import { escalate, isResolved } from './requests.js';
-import { processEmail } from './inbound.js';
+import { escalate, isResolved, fromSampleOnly, applyReplyCheck } from './requests.js';
+import { processEmail, checkReply } from './inbound.js';
 import { companyByKey, ensureAddress, upsertHolding } from './companies.js';
 import { runBatch } from './ledger.js';
 
@@ -101,8 +101,10 @@ export async function demoReplies({ userId, force = false } = {}) {
   const out = [];
   // Only demo accounts ever get pretend replies
   const user = db.get('users', userId);
-  if (!user?.demo) return out;
-  for (const t of db.filter('targets', x => x.userId === userId && !x.demoReplied && !isResolved(x) && ['sent', 'no-response', 'awaiting-reply', 'overdue'].includes(x.status) && x.sentAt && x.addressId)) {
+  if (!user) return out;
+  for (const t of db.filter('targets', x => x.userId === userId && !x.demoReplied && !isResolved(x) && ['sent', 'no-response', 'awaiting-reply', 'overdue'].includes(x.status) && x.sentAt)) {
+    // Real accounts only get pretend replies for companies that came from the sample inbox
+    if (!user.demo && !fromSampleOnly(user, db.get('companies', t.companyId))) continue;
     const company = db.get('companies', t.companyId);
     const req = db.get('requests', t.requestId);
     if (!company?.domains?.length || !req || req.status !== 'active') continue;
@@ -112,12 +114,19 @@ export async function demoReplies({ userId, force = false } = {}) {
     if (script.needsReminder && !t.reminderAt) continue;
     if (!force && age < script.after) continue;
     if (t.status === 'overdue' && !force) continue;
-    const addr = db.get('addresses', t.addressId);
-    if (!addr || addr.status !== 'active') continue;
+    const addr = t.addressId ? db.get('addresses', t.addressId) : null;
+    if (addr && addr.status !== 'active') continue;
     db.update('targets', t.id, { demoReplied: true });
     const m = script.reply(t, req);
-    const r = await processEmail({ to: addr.email, from: m.from, subject: m.subject, text: m.text, dkim: 'pass' });
-    out.push({ company: company.name, action: r.action });
+    if (addr) {
+      const r = await processEmail({ to: addr.email, from: m.from, subject: m.subject, text: m.text, dkim: 'pass' });
+      out.push({ company: company.name, action: r.action });
+    } else {
+      // No protected inbox: the reply is read by AI directly, as if it had arrived
+      const check = await checkReply(user, company, { from: m.from, subject: m.subject, text: m.text, dkim: 'pass' });
+      await applyReplyCheck(db.get('targets', t.id), check, null);
+      out.push({ company: company.name, action: 'reply-checked' });
+    }
   }
   return out;
 }
