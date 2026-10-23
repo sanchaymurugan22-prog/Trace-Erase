@@ -20,7 +20,7 @@ export function startScan(user, { source = 'sample', messages = null, gmailToken
   const scan = db.insert('scans', {
     userId: user.id, source, status: 'running', phase: 'Reading senders', progress: 2,
     sources: [
-      { key: 'mail', label: source === 'gmail' ? 'Gmail senders' : source === 'upload' ? 'Uploaded email list' : 'Sample inbox', state: 'running', detail: '' },
+      { key: 'mail', label: source === 'gmail' ? 'Gmail senders' : source === 'upload' ? 'Uploaded email export' : 'Gmail (demo sample inbox)', state: 'running', detail: '' },
       { key: 'signins', label: 'Google sign-ins', state: 'waiting', detail: '' },
       { key: 'ai', label: 'AI identifying companies', state: 'waiting', detail: '' },
       { key: 'policies', label: 'Reading what each company keeps', state: 'waiting', detail: '' }
@@ -125,7 +125,7 @@ ${JSON.stringify(list)}`,
   const summary = await summarize(user, holdings);
   update(scanId, { status: 'done', progress: 100, phase: 'Done', found: holdings.length, summary, finishedAt: nowIso() });
   db.update('users', user.id, { onboarding: { ...(user.onboarding || {}), scanned: true } });
-  createAlert(user.id, { type: 'scan', title: `Scan complete: ${holdings.length} companies have your data`, body: summary.headline, link: '/onboarding/results' });
+  createAlert(user.id, { type: 'scan', title: `Scan complete: ${holdings.length} companies have your data`, body: summary.headline, link: '/app/companies' });
 }
 
 export async function summarize(user, holdings) {

@@ -14,6 +14,7 @@ export const STATUS: Record<string, [Tone, IconName | null, string, string]> = {
   overdue: ['ovd', 'timer', 'Overdue', 'Overdue'],
   refused: ['ovd', 'ban', 'Refused', 'Refused'],
   queued: ['neutral', 'clock', 'Draft', 'Draft'],
+  preparing: ['pend', 'sparkle', 'Writing', 'AI is writing the letter'],
   'not-asked': ['neutral', null, 'Not asked', 'Not asked yet'],
   active: ['brand', 'refresh', 'In progress', 'In progress'],
   completed: ['ok', 'check', 'Completed', 'Completed'],

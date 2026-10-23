@@ -64,12 +64,12 @@ export async function companyDetail(user, companyId) {
   };
 }
 
-export function dataMap(userId) {
+export function dataMap(userId, { limit = 12 } = {}) {
   const rows = companiesList(userId);
   const direct = rows.filter(r => !r.via);
   const withPartners = direct.filter(r => r.partnersKnown);
   const others = direct.filter(r => !r.partnersKnown).sort((a, b) => (a.daysSinceUse ?? 9e9) - (b.daysSinceUse ?? 9e9));
-  const shown = [...withPartners, ...others].slice(0, 6);
+  const shown = [...withPartners, ...others].slice(0, Math.max(1, Math.min(60, limit)));
   const edges = [];
   const partnerNodes = new Map();
   for (const r of shown) {
@@ -79,10 +79,22 @@ export function dataMap(userId) {
       edges.push({ from: r.id, to: p.company.id, kind: t && ['overdue', 'no-response'].includes(t.status) ? 'ignored' : 'shared', receiptId: p.receipts.at(-1).id });
     }
   }
+  // Kinds of partners each company says (in its privacy policy) it shares data with: drawn as "likely" until a reply confirms names
+  const typeNodes = new Map();
+  for (const r of shown) {
+    for (const ty of (r.company.partnerTypes || []).slice(0, 4)) {
+      const id = 'type:' + ty.toLowerCase();
+      const n = typeNodes.get(id) || { id, name: ty, status: 'likely', likely: true, count: 0 };
+      n.count++;
+      typeNodes.set(id, n);
+      edges.push({ from: r.id, to: id, kind: 'likely' });
+    }
+  }
   const leakNodes = db.filter('leaks', l => l.userId === userId).map(l => ({ id: l.id, name: l.senderName, from: l.investigation?.likelySourceCompanyId || l.companyId }));
   return {
     companies: shown.map(r => ({ id: r.id, name: r.company.name, color: r.company.color, status: r.status, category: r.company.category })),
-    partners: [...partnerNodes.values()], leaks: leakNodes, edges, more: Math.max(0, direct.length - shown.length)
+    partners: [...partnerNodes.values(), ...[...typeNodes.values()].sort((a, b) => b.count - a.count)], leaks: leakNodes, edges,
+    more: Math.max(0, direct.length - shown.length), total: direct.length
   };
 }
 

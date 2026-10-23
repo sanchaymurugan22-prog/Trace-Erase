@@ -190,7 +190,7 @@ export function registerRoutes(app) {
   app.get('/api/companies', (req) => { U(req); return views.companiesList(req.user.id); });
   app.get('/api/companies/:id', (req) => { U(req); return views.companyDetail(req.user, req.params.id); });
   app.post('/api/companies/:id/policy/refresh', async (req) => { U(req); const c = db.get('companies', req.params.id); if (!c) throw notFound(); return getPolicy(c, { refresh: true }); });
-  app.get('/api/map', (req) => { U(req); return views.dataMap(req.user.id); });
+  app.get('/api/map', (req) => { U(req); return views.dataMap(req.user.id, { limit: Number(req.query.limit) || 12 }); });
 
   // Fix an old account: 1 switch email, 2 ask what they hold, 3 check reply, 4 decide
   app.post('/api/companies/:id/fix', async (req) => {

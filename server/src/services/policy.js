@@ -12,22 +12,22 @@ const htmlToText = (html) => html
 async function fetchPolicyText(domain) {
   if (!domain || domain.endsWith('.example')) return null;
   const paths = ['/privacy', '/privacy-policy', '/privacypolicy', '/policies/privacy', '/legal/privacy', '/privacy.html'];
-  for (const host of [`https://www.${domain}`, `https://${domain}`]) {
-    for (const p of paths) {
-      try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 8000);
-        const r = await fetch(host + p, { signal: ctrl.signal, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 TraceErase policy reader' } });
-        clearTimeout(t);
-        if (!r.ok) continue;
-        const ct = r.headers.get('content-type') || '';
-        if (!ct.includes('html') && !ct.includes('text')) continue;
-        const text = htmlToText(await r.text());
-        if (text.length > 1500 && /privacy|personal (data|information)/i.test(text)) return { url: r.url || host + p, text: text.slice(0, 60000) };
-      } catch { /* try next */ }
-    }
-  }
-  return null;
+  // All likely addresses are tried at once (each gives up after 7 seconds); the first in the list that works wins
+  const tryOne = async (url) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 7000);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 TraceErase policy reader' } });
+      if (!r.ok) return null;
+      const ct = r.headers.get('content-type') || '';
+      if (!ct.includes('html') && !ct.includes('text')) return null;
+      const text = htmlToText(await r.text());
+      return text.length > 1500 && /privacy|personal (data|information)/i.test(text) ? { url: r.url || url, text: text.slice(0, 60000) } : null;
+    } catch { return null; } finally { clearTimeout(t); }
+  };
+  const urls = [`https://www.${domain}`, `https://${domain}`].flatMap(h => paths.map(p => h + p));
+  const results = await Promise.all(urls.map(tryOne));
+  return results.find(Boolean) || null;
 }
 
 function contactEmails(text) {
@@ -60,6 +60,21 @@ function ruleSummary(company) {
 function pickContact(emails) {
   const rank = (e) => /grievance|dpo|privacy|data.?protection/i.test(e) ? 0 : /legal|compliance|nodal/i.test(e) ? 1 : /support|care|help/i.test(e) ? 2 : 3;
   return [...emails].sort((a, b) => rank(a) - rank(b))[0];
+}
+
+/** Instant answer: the saved policy if we have one, otherwise the general rules for this kind of company. */
+export function quickPolicy(company) {
+  return db.find('policies', p => p.companyId === company.id) || ruleSummary(company);
+}
+
+/** Read many policies in the background, a few at a time. */
+const reading = new Set();
+export function readPoliciesInBackground(companies, at = 3) {
+  const todo = companies.filter(c => c && !reading.has(c.id) && !db.find('policies', p => p.companyId === c.id));
+  todo.forEach(c => reading.add(c.id));
+  let i = 0;
+  const worker = async () => { while (i < todo.length) { const c = todo[i++]; await getPolicy(c).catch(() => {}); reading.delete(c.id); } };
+  return Promise.all(Array.from({ length: Math.min(at, todo.length) }, worker));
 }
 
 export async function getPolicy(company, { refresh = false } = {}) {

@@ -8,7 +8,7 @@ import { sha256, stableStringify } from '../util/crypto.js';
 import { addReceipt } from './ledger.js';
 import { createAlert, sendEmail } from './notify.js';
 import { draftLetter } from './letters.js';
-import { getPolicy } from './policy.js';
+import { getPolicy, quickPolicy, readPoliciesInBackground } from './policy.js';
 import { partnersOf, addressFor, ensureAddress, publicCompany, getOrCreateCompany, upsertHolding, allowSender, rootDomain } from './companies.js';
 import { now, nowIso, daysBetween, addDays, withClockOf } from './clock.js';
 
@@ -28,19 +28,17 @@ function event(target, type, text, extra = {}) {
   return ev;
 }
 
-async function channelFor(company) {
-  try {
-    const p = await getPolicy(company);
-    if (p.deletionMethod === 'webform' || p.deletionMethod === 'in-app') return 'webform';
-  } catch {}
-  return 'email';
+function channelFor(company) {
+  const p = quickPolicy(company);
+  return p.deletionMethod === 'webform' || p.deletionMethod === 'in-app' ? 'webform' : 'email';
 }
 
 async function newTarget(user, req, company, reason, viaCompanyId) {
-  const policy = await getPolicy(company).catch(() => null);
+  // Drafting must be instant: use what we already know; full policies are read in the background
+  const policy = quickPolicy(company);
   return db.insert('targets', {
     requestId: req.id, userId: user.id, companyId: company.id, reason, viaCompanyId,
-    channel: await channelFor(company), status: 'queued', events: [],
+    channel: channelFor(company), status: 'queued', events: [],
     legalHolds: (policy?.keeps || []).map(k => ({ what: k.what, why: k.why }))
   });
 }
@@ -64,6 +62,7 @@ export async function createDraft(user, companyIds) {
   const req = db.insert('requests', { userId: user.id, number: nextNumber('DR-', 'requests'), kind: 'deletion', status: 'draft', createdAt: nowIso() });
   for (const t of list) await newTarget(user, req, t.company, t.reason, t.via);
   db.update('requests', req.id, { payloadHash: sha256(stableStringify(requestPayload(req.id))) });
+  readPoliciesInBackground(list.map(t => t.company));
   return describeRequest(req.id);
 }
 
@@ -89,8 +88,17 @@ export async function activate(user, requestId, { signature = null, autoOtp = tr
   });
   db.update('requests', r.id, { status: 'active', signedAt: nowIso(), signature, signatureReceiptId: receipt.id, autoOtp, autoEscalate });
   const ts = db.filter('targets', t => t.requestId === r.id);
-  for (const t of ts) await dispatch(user, db.get('requests', r.id), t);
-  createAlert(user.id, { type: 'request', title: `Deletion request ${r.number} sent to ${ts.length} ${ts.length === 1 ? 'company' : 'companies'}`, body: 'AI will read every reply. We remind and escalate automatically.', link: `/app/requests/${r.id}` });
+  // AI writes and sends each letter in the background (a few at a time); the request page updates as they go
+  for (const t of ts) db.update('targets', t.id, { status: 'preparing', preparingAt: new Date().toISOString() });
+  const run = async () => {
+    let i = 0;
+    const worker = async () => { while (i < ts.length) { const t = ts[i++]; try { await withClockOf(user, () => dispatch(user, db.get('requests', r.id), db.get('targets', t.id))); } catch (e) { console.error('[dispatch]', e); db.update('targets', t.id, { status: 'queued' }); } } };
+    await Promise.all(Array.from({ length: Math.min(4, ts.length) }, worker));
+    createAlert(user.id, { type: 'request', title: `Deletion request ${r.number} sent to ${ts.length} ${ts.length === 1 ? 'company' : 'companies'}`, body: 'AI will read every reply. We remind and escalate automatically.', link: `/app/requests/${r.id}` });
+  };
+  const job = run();
+  // Short requests finish before we answer (keeps the demo snappy); long ones carry on in the background
+  await Promise.race([job, new Promise(res => setTimeout(res, 8000))]);
   return describeRequest(r.id);
 }
 
@@ -285,13 +293,20 @@ export async function escalate({ userId = null } = {}) {
   try {
     // Each account is checked against its own clock (demo accounts may have moved theirs forward)
     const users = userId ? [db.get('users', userId)].filter(Boolean)
-      : db.filter('users', u => db.find('targets', t => t.userId === u.id && ['sent', 'no-response', 'awaiting-reply', 'claimed'].includes(t.status)));
+      : db.filter('users', u => db.find('targets', t => t.userId === u.id && ['sent', 'no-response', 'awaiting-reply', 'claimed', 'preparing'].includes(t.status)));
     for (const user of users) await withClockOf(user, () => escalateUser(user));
   } finally { if (!userId) escalating = false; }
 }
 
 async function escalateUser(user) {
   const { reminderDay, grievanceDay, complaintDay } = config.escalation;
+  // Letters interrupted by a server restart are finished here
+  for (const t of db.filter('targets', x => x.userId === user.id && x.status === 'preparing' && Date.now() - new Date(x.preparingAt || 0).getTime() > 180000)) {
+    const req = db.get('requests', t.requestId);
+    if (req?.status !== 'active') continue;
+    db.update('targets', t.id, { preparingAt: new Date().toISOString() });
+    await dispatch(user, req, db.get('targets', t.id)).catch(e => console.error('[dispatch retry]', e.message));
+  }
   for (const t of db.filter('targets', x => x.userId === user.id && ['sent', 'no-response', 'awaiting-reply'].includes(x.status) && x.sentAt)) {
     const req = db.get('requests', t.requestId);
     if (!req || req.status !== 'active' || req.autoEscalate === false) continue;

@@ -31,6 +31,7 @@ export function authHeaders(): Record<string, string> {
 
 // ---------- "server is waking up" (the free server sleeps when nobody uses it) ----------
 let pending = 0;
+let lastAnswer = 0; // when the server last answered (it sleeps after 15 quiet minutes)
 let slowTimer: number | undefined;
 const wakeListeners = new Set<(slow: boolean) => void>();
 const setSlow = (v: boolean) => wakeListeners.forEach(f => f(v));
@@ -39,9 +40,11 @@ export const onServerSlow = (f: (slow: boolean) => void) => { wakeListeners.add(
 /** fetch() to the API with the sign-in token attached. */
 export async function apiFetch(path: string, init: RequestInit = {}) {
   pending++;
-  if (pending === 1) slowTimer = window.setTimeout(() => setSlow(true), 4000);
+  if (pending === 1) slowTimer = window.setTimeout(() => { if (Date.now() - lastAnswer > 10 * 60000) setSlow(true); }, 4000);
   try {
-    return await fetch(apiUrl(path), { credentials: 'include', ...init, headers: { ...authHeaders(), ...(init.headers as Record<string, string> || {}) } });
+    const r = await fetch(apiUrl(path), { credentials: 'include', ...init, headers: { ...authHeaders(), ...(init.headers as Record<string, string> || {}) } });
+    lastAnswer = Date.now(); setSlow(false);
+    return r;
   } finally {
     pending--;
     if (!pending) { window.clearTimeout(slowTimer); setSlow(false); }
@@ -49,7 +52,7 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
 }
 
 /** Start waking the server as soon as the website opens. */
-export const warmUp = () => { if (API_URL) fetch(apiUrl('/api/health')).catch(() => {}); };
+export const warmUp = () => { if (API_URL) fetch(apiUrl('/api/health')).then(() => { lastAnswer = Date.now(); setSlow(false); }).catch(() => {}); };
 
 export async function api<T = any>(path: string, { method = 'GET', body, signal }: Options = {}): Promise<T> {
   let res: Response;

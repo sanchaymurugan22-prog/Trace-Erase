@@ -42,7 +42,6 @@ export default function ConnectPage() {
   // Online: Gmail is read with a one-time Google permission in the browser (nothing is stored)
   const browserGmail = GMAIL_SCAN && googleEnabled() && !isDemo;
   // Online without direct Gmail access: people upload a mail export instead
-  const showGmail = GMAIL_SCAN || !!user?.gmailConnected;
   const gmailReady = !isDemo && (browserGmail || !!user?.gmailConnected);
   const [source, setSource] = useState<Source>(isDemo ? 'sample' : gmailReady ? 'gmail' : 'upload');
   useEffect(() => { if (browserGmail) preloadGoogle(); }, [browserGmail]);
@@ -77,39 +76,33 @@ export default function ConnectPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-5 max-[900px]:grid-cols-1">
-          {/* Gmail */}
-          {showGmail && <Option selected={source === 'gmail'} onSelect={gmailReady ? () => setSource('gmail') : undefined} disabled={isDemo}>
+          {/* Gmail: real accounts scan their own Gmail; demo accounts scan a sample Gmail inbox automatically */}
+          <Option selected={isDemo ? source === 'sample' : source === 'gmail'} onSelect={isDemo ? () => setSource('sample') : gmailReady ? () => setSource('gmail') : undefined}>
             <GmailLogo />
             <div className="flex min-w-0 flex-1 flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xl font-bold">Gmail</span>
-                {isDemo ? <Chip>{t('Not in the demo')}</Chip>
+                {isDemo ? <Radio on={source === 'sample'} />
                   : browserGmail ? <Radio on={source === 'gmail'} />
                   : user?.gmailConnected ? <Chip tone="ok" icon="check">{t('Connected')}</Chip>
-                  : flags.gmailConfigured ? <Chip tone="brand">{t('Ready to connect')}</Chip> : <Chip>{t('Not set up yet')}</Chip>}
+                  : GMAIL_SCAN && flags.gmailConfigured ? <Chip tone="brand">{t('Ready to connect')}</Chip> : <Chip>{t('Waiting for Google approval')}</Chip>}
               </div>
               <p className="text-sm text-mute">{t('Read-only metadata. AI looks at who emailed you and the subject line, never your message bodies.')}</p>
-              {isDemo ? <span className="text-sm text-mute">{t('Demo accounts use the sample inbox. Create a real account to scan your own Gmail.')}</span>
-                : browserGmail ? <span className="text-sm text-ink2">{t('When you start, Google asks you to allow read-only access. It is used once for this scan and not stored.')}</span>
+              {isDemo ? (
+                <span className="flex items-start gap-2 rounded-xl bg-accent-s px-3 py-2 text-[13px] text-ink2"><Icon name="play" size="sm" className="mt-0.5 flex-none text-accent" />{t('Demo: a sample Gmail inbox (43 senders like Zomato, Myntra and MakeMyTrip, plus Google sign-ins) is connected and scanned automatically. Just press Start AI scan.')}</span>
+              ) : browserGmail ? <span className="text-sm text-ink2">{t('When you start, Google asks you to allow read-only access. It is used once for this scan and not stored.')}</span>
                 : user?.gmailConnected
                 ? <span className="flex items-center gap-2 text-sm"><Radio on={source === 'gmail'} />{t('Scan my Gmail')}</span>
-                : flags.gmailConfigured
+                : GMAIL_SCAN && flags.gmailConfigured
                   ? <Button size="sm" className="self-start" onClick={connectGmail}><Icon name="link" size="sm" />{t('Connect Gmail')}</Button>
-                  : <div className="flex flex-wrap items-center gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => setDialog('gmail')}><Icon name="settings" size="sm" />{t('Set up Gmail')}</Button>
-                      <span className="text-xs text-mute">{t('About 5 minutes, once')}</span>
-                    </div>}
+                  : GMAIL_SCAN
+                    ? <div className="flex flex-wrap items-center gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => setDialog('gmail')}><Icon name="settings" size="sm" />{t('Set up Gmail')}</Button>
+                        <span className="text-xs text-mute">{t('About 5 minutes, once')}</span>
+                      </div>
+                    : <span className="text-sm text-ink2">{t('Google is reviewing TraceErase for Gmail access. Until then, upload your email export: it gives the same result.')}</span>}
             </div>
-          </Option>}
-
-          {/* Sample inbox (demo accounts only: it is pretend data) */}
-          {isDemo && <Option selected={source === 'sample'} onSelect={() => setSource('sample')}>
-            <Tile icon="inbox" tone="accent" size="lg" />
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-              <div className="flex items-center justify-between gap-2"><span className="text-xl font-bold">{t('Sample inbox')}</span><Radio on={source === 'sample'} /></div>
-              <p className="text-sm text-mute">{t('43 realistic senders (Zomato, Myntra, MakeMyTrip and more) plus sample Google sign-ins. Best for demos.')}</p>
-            </div>
-          </Option>}
+          </Option>
 
           {/* Upload */}
           <Option selected={source === 'upload'} onSelect={upload ? () => setSource('upload') : undefined}>

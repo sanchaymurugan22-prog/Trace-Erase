@@ -23,6 +23,8 @@ for (const level of ['log', 'warn', 'error']) {
 }
 
 seedStaff();
+// Older scan alerts pointed at the onboarding results page; the companies page is the right place now
+for (const a of db.filter('alerts', x => x.link === '/onboarding/results')) db.update('alerts', a.id, { link: '/app/companies' });
 const app = createApp();
 
 // The website (Firebase Hosting, APP_URL) and local development may call the API from another address
